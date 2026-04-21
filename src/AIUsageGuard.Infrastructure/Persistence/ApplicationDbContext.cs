@@ -5,6 +5,7 @@ using AIUsageGuard.Infrastructure.Persistence.Configurations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace AIUsageGuard.Infrastructure.Persistence;
 
@@ -22,6 +23,8 @@ public sealed class ApplicationDbContext
 
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
 
+    public DbSet<AIUsageEvent> AIUsageEvents => Set<AIUsageEvent>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -29,6 +32,7 @@ public sealed class ApplicationDbContext
         builder.ApplyConfiguration(new WorkspaceConfiguration());
         builder.ApplyConfiguration(new WorkspaceMembershipConfiguration());
         builder.ApplyConfiguration(new AuditRecordConfiguration());
+        builder.ApplyConfiguration(new AIUsageEventConfiguration());
 
         builder.Entity<ApplicationUser>(user =>
         {
@@ -158,13 +162,91 @@ public sealed class ApplicationDbContext
             .OrderBy(record => record.OccurredAt)
             .ToListAsync(cancellationToken);
 
+    public Task<AIUsageEvent?> FindAIUsageEventByIdempotencyKeyAsync(Guid workspaceId, string idempotencyKey, CancellationToken cancellationToken = default)
+        => AIUsageEvents.FirstOrDefaultAsync(
+            item => item.WorkspaceId == workspaceId && item.IdempotencyKey == idempotencyKey,
+            cancellationToken);
+
+    public async Task AddAIUsageEventAsync(AIUsageEvent aiUsageEvent, CancellationToken cancellationToken = default)
+    {
+        AIUsageEvents.Add(aiUsageEvent);
+        await SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AIUsageEvent>> ListAIUsageEventsAsync(
+        Guid workspaceId,
+        AIUsageEventType? eventType,
+        Guid? actorUserId,
+        string? toolName,
+        DateTimeOffset? fromOccurredAt,
+        DateTimeOffset? toOccurredAt,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await BuildAIUsageEventQuery(workspaceId).ToListAsync(cancellationToken);
+        return items
+            .Where(item => !eventType.HasValue || item.EventType == eventType.Value)
+            .Where(item => !actorUserId.HasValue || item.ActorUserId == actorUserId.Value)
+            .Where(item => string.IsNullOrWhiteSpace(toolName) || item.ToolName.Equals(toolName.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Where(item => !fromOccurredAt.HasValue || item.OccurredAt >= fromOccurredAt.Value)
+            .Where(item => !toOccurredAt.HasValue || item.OccurredAt <= toOccurredAt.Value)
+            .OrderByDescending(item => item.OccurredAt)
+            .ThenByDescending(item => item.ReceivedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    public Task<int> CountAIUsageEventsAsync(
+        Guid workspaceId,
+        AIUsageEventType? eventType,
+        Guid? actorUserId,
+        string? toolName,
+        DateTimeOffset? fromOccurredAt,
+        DateTimeOffset? toOccurredAt,
+        CancellationToken cancellationToken = default)
+    {
+        return CountAIUsageEventsInMemoryAsync(
+            workspaceId,
+            eventType,
+            actorUserId,
+            toolName,
+            fromOccurredAt,
+            toOccurredAt,
+            cancellationToken);
+    }
+
     public async Task ResetAsync(CancellationToken cancellationToken = default)
     {
         AuditRecords.RemoveRange(AuditRecords);
+        AIUsageEvents.RemoveRange(AIUsageEvents);
         WorkspaceMemberships.RemoveRange(WorkspaceMemberships);
         Workspaces.RemoveRange(Workspaces);
         Users.RemoveRange(Users);
         await SaveChangesAsync(cancellationToken);
+    }
+
+    private IQueryable<AIUsageEvent> BuildAIUsageEventQuery(Guid workspaceId)
+        => AIUsageEvents.Where(item => item.WorkspaceId == workspaceId);
+
+    private async Task<int> CountAIUsageEventsInMemoryAsync(
+        Guid workspaceId,
+        AIUsageEventType? eventType,
+        Guid? actorUserId,
+        string? toolName,
+        DateTimeOffset? fromOccurredAt,
+        DateTimeOffset? toOccurredAt,
+        CancellationToken cancellationToken)
+    {
+        var items = await BuildAIUsageEventQuery(workspaceId).ToListAsync(cancellationToken);
+        return items
+            .Where(item => !eventType.HasValue || item.EventType == eventType.Value)
+            .Where(item => !actorUserId.HasValue || item.ActorUserId == actorUserId.Value)
+            .Where(item => string.IsNullOrWhiteSpace(toolName) || item.ToolName.Equals(toolName.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Where(item => !fromOccurredAt.HasValue || item.OccurredAt >= fromOccurredAt.Value)
+            .Where(item => !toOccurredAt.HasValue || item.OccurredAt <= toOccurredAt.Value)
+            .Count();
     }
 
     private static UserAccount ToModel(ApplicationUser entity)

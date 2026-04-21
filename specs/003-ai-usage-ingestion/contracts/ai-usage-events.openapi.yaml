@@ -1,0 +1,376 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Event Ingestion API
+  version: 0.1.0
+  description: >
+    Phase 2 HTTP contract for workspace-scoped AI usage event ingestion and
+    basic history retrieval.
+servers:
+  - url: https://api.example.com
+paths:
+  /workspaces/{workspaceId}/events:
+    post:
+      summary: Submit a workspace-scoped AI usage event
+      operationId: ingestAiUsageEvent
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventIngestionRequest'
+      responses:
+        '201':
+          description: Event accepted and stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventIngestionResponse'
+              examples:
+                accepted:
+                  value:
+                    eventId: 33333333-3333-3333-3333-333333333333
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    actorUserId: 11111111-1111-1111-1111-111111111111
+                    eventType: prompt_submitted
+                    outcome: accepted
+                    idempotencyKey: evt-20260421-001
+                    toolName: ChatGPT
+                    modelName: gpt-5.4
+                    details:
+                      promptKind: first-pass
+                    occurredAt: '2026-04-21T12:00:00Z'
+                    receivedAt: '2026-04-21T12:00:01Z'
+        '200':
+          description: Duplicate submission matched an existing event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventIngestionResponse'
+              examples:
+                duplicate:
+                  value:
+                    eventId: 33333333-3333-3333-3333-333333333333
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    actorUserId: 11111111-1111-1111-1111-111111111111
+                    eventType: prompt_submitted
+                    outcome: duplicate
+                    idempotencyKey: evt-20260421-001
+                    toolName: ChatGPT
+                    modelName: gpt-5.4
+                    details:
+                      promptKind: first-pass
+                    occurredAt: '2026-04-21T12:00:00Z'
+                    receivedAt: '2026-04-21T12:00:01Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      summary: Retrieve AI usage event history for a workspace
+      operationId: listAiUsageEvents
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/EventType'
+        - $ref: '#/components/parameters/ActorUserId'
+        - $ref: '#/components/parameters/ToolName'
+        - $ref: '#/components/parameters/FromOccurredAt'
+        - $ref: '#/components/parameters/ToOccurredAt'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged event history for the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EventType:
+      name: eventType
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/AIUsageEventType'
+    ActorUserId:
+      name: actorUserId
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    ToolName:
+      name: toolName
+      in: query
+      required: false
+      schema:
+        type: string
+    FromOccurredAt:
+      name: fromOccurredAt
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    ToOccurredAt:
+      name: toOccurredAt
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    PageNumber:
+      name: pageNumber
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+  responses:
+    BadRequest:
+      description: Invalid or unsupported event submission
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            unsupportedEventType:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Event type is not supported for Phase 2 ingestion.
+    Unauthorized:
+      description: Authentication required or credentials invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            notSignedIn:
+              value:
+                status: 401
+                title: Unauthorized
+                detail: Authentication is required.
+    Forbidden:
+      description: Caller is not authorized for the requested workspace action
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            historyDenied:
+              value:
+                status: 403
+                title: Forbidden
+                detail: User is not authorized to read AI usage event history for the requested workspace.
+  schemas:
+    AIUsageEventType:
+      type: string
+      enum:
+        - prompt_submitted
+        - file_uploaded
+        - tool_used
+        - usage_recorded
+        - model_called
+    EventIngestionRequest:
+      type: object
+      required:
+        - idempotencyKey
+        - eventType
+        - occurredAt
+        - toolName
+      properties:
+        idempotencyKey:
+          type: string
+          minLength: 1
+          maxLength: 200
+        eventType:
+          $ref: '#/components/schemas/AIUsageEventType'
+        occurredAt:
+          type: string
+          format: date-time
+        toolName:
+          type: string
+          maxLength: 200
+        modelName:
+          type: string
+          maxLength: 200
+        sourceLabel:
+          type: string
+          maxLength: 200
+        promptPreview:
+          type: string
+          maxLength: 4000
+        fileName:
+          type: string
+          maxLength: 512
+        fileSizeBytes:
+          type: integer
+          minimum: 0
+        inputTokenCount:
+          type: integer
+          minimum: 0
+        outputTokenCount:
+          type: integer
+          minimum: 0
+        estimatedCost:
+          type: number
+          minimum: 0
+        details:
+          type: object
+          additionalProperties:
+            type: string
+    EventIngestionResponse:
+      type: object
+      required:
+        - eventId
+        - workspaceId
+        - actorUserId
+        - eventType
+        - outcome
+        - idempotencyKey
+        - toolName
+        - occurredAt
+        - receivedAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+        eventType:
+          $ref: '#/components/schemas/AIUsageEventType'
+        outcome:
+          type: string
+          enum:
+            - accepted
+            - duplicate
+        idempotencyKey:
+          type: string
+        toolName:
+          type: string
+        modelName:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+        details:
+          type: object
+          additionalProperties:
+            type: string
+    EventHistoryResponse:
+      type: object
+      required:
+        - items
+        - pageNumber
+        - pageSize
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIUsageEventRecord'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+          minimum: 0
+    AIUsageEventRecord:
+      type: object
+      required:
+        - eventId
+        - workspaceId
+        - actorUserId
+        - eventType
+        - idempotencyKey
+        - toolName
+        - occurredAt
+        - receivedAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+        eventType:
+          $ref: '#/components/schemas/AIUsageEventType'
+        idempotencyKey:
+          type: string
+        toolName:
+          type: string
+        modelName:
+          type: string
+        sourceLabel:
+          type: string
+        promptPreview:
+          type: string
+        fileName:
+          type: string
+        fileSizeBytes:
+          type: integer
+        inputTokenCount:
+          type: integer
+        outputTokenCount:
+          type: integer
+        estimatedCost:
+          type: number
+        occurredAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+        details:
+          type: object
+          additionalProperties:
+            type: string
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string

@@ -1,5 +1,7 @@
 using AIUsageGuard.Api.Policies;
 using AIUsageGuard.Application.Abstractions;
+using AIUsageGuard.Application.AIUsageEvents.IngestEvent;
+using AIUsageGuard.Application.AIUsageEvents.ListEvents;
 using AIUsageGuard.Application.Auditing;
 using AIUsageGuard.Application.Errors;
 using AIUsageGuard.Application.Identity;
@@ -24,6 +26,9 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
@@ -58,6 +63,8 @@ builder.Services.AddScoped<ResolveCurrentWorkspaceService>();
 builder.Services.AddScoped<ListMembershipsService>();
 builder.Services.AddScoped<CreateMembershipService>();
 builder.Services.AddScoped<UpdateMembershipService>();
+builder.Services.AddScoped<IngestAIUsageEventService>();
+builder.Services.AddScoped<ListAIUsageEventsService>();
 builder.Services.AddScoped<IAuthorizationHandler, WorkspaceAuthorizationHandler>();
 builder.Services
     .AddIdentityCore<ApplicationUser>()
