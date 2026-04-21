@@ -26,12 +26,24 @@
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Tenant Boundary**: [workspace isolation model, ownership rules, cross-tenant guardrails]
+**AuthZ Model**: [roles, deny-by-default rules, service/service permissions]
+**Sensitive Data Handling**: [AI data collected, redaction/encryption/retention approach]
+**Audit & Observability**: [audit events, structured logs, metrics, alerts, tracing]
+**API / Contract Strategy**: [public APIs, event schemas, versioning, failure modes]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] Backend-first value is delivered without depending on unplanned frontend work.
+- [ ] API or event contracts, validation rules, and failure modes are defined.
+- [ ] Tenant isolation, workspace scoping, and deny-by-default authorization are specified.
+- [ ] Sensitive AI data handling covers collection minimization, storage, transport, and retention.
+- [ ] Audit events and explainable policy/risk decisions are defined for sensitive flows.
+- [ ] Tests cover domain logic, integration paths, and public contracts in proportion to risk.
+- [ ] Logging, metrics, and standardized error handling are included in the delivery scope.
+- [ ] Any exception for microservices, ML-based risk scoring, or reduced coverage is justified in Complexity Tracking.
 
 ## Project Structure
 
@@ -92,7 +104,8 @@ ios/ or android/
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+directories captured above. Explain how the structure preserves modular backend
+boundaries, tenant isolation, and auditability.]
 
 ## Complexity Tracking
 

@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <WarningsAsErrors />
+    <NoWarn>$(NoWarn);NU1605;SYSLIB0011</NoWarn>
+  </PropertyGroup>
+</Project>

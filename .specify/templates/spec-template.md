@@ -74,6 +74,26 @@
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+- What happens when a user attempts cross-tenant access or uses the wrong workspace context?
+- How does the system respond to malformed, duplicate, delayed, or replayed AI usage events?
+- What happens when a policy/risk rule fires on sensitive data or an unapproved tool is used?
+
+## Security & Governance Considerations *(mandatory)*
+
+### Tenant & Access Boundaries
+
+- [Identify the workspace scope, actor roles, and authorization boundary for this feature]
+- [Describe how the feature prevents cross-tenant reads/writes and privilege escalation]
+
+### Sensitive Data Handling
+
+- [List AI usage data captured, stored, or exposed by this feature]
+- [Describe validation, minimization, redaction, encryption, and retention expectations]
+
+### Auditability & Policy Impact
+
+- [List required audit events, alerts, or policy/risk decisions introduced by this feature]
+- [Explain how operators can understand why the system allowed, blocked, or flagged behavior]
 
 ## Requirements *(mandatory)*
 
@@ -89,11 +109,13 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-006**: System MUST enforce workspace-scoped authorization for every protected action and data access path.
+- **FR-007**: System MUST emit audit records for sensitive actions and policy/risk outcomes introduced by this feature.
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-008**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
+- **FR-009**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 
@@ -113,6 +135,7 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-005**: [Governance metric, e.g., "100% of sensitive actions produce auditable records with actor, tenant, and reason"]
 
 ## Assumptions
 
@@ -126,3 +149,4 @@
 - [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
 - [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
 - [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- [Assumption about workspace boundaries, e.g., "Every request includes a trusted workspace context"]

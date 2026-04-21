@@ -1,0 +1,15 @@
+bin/
+obj/
+packages/
+*.user
+*.suo
+*.log
+.env*
+TestResults/
+
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

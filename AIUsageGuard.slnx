@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AIUsageGuard.Api/AIUsageGuard.Api.csproj" />
+    <Project Path="src/AIUsageGuard.Application/AIUsageGuard.Application.csproj" />
+    <Project Path="src/AIUsageGuard.Domain/AIUsageGuard.Domain.csproj" />
+    <Project Path="src/AIUsageGuard.Infrastructure/AIUsageGuard.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AIUsageGuard.IntegrationTests/AIUsageGuard.IntegrationTests.csproj" />
+    <Project Path="tests/AIUsageGuard.UnitTests/AIUsageGuard.UnitTests.csproj" />
+  </Folder>
+</Solution>

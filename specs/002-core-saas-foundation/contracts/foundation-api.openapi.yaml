@@ -1,0 +1,346 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Foundation API
+  version: 0.1.0
+  description: >
+    Phase 1 HTTP contract for onboarding, authentication, workspace context, and
+    membership management.
+servers:
+  - url: https://api.example.com
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user account and workspace
+      operationId: registerUserAndWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterWorkspaceRequest'
+      responses:
+        '201':
+          description: Account and workspace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceSessionResponse'
+              examples:
+                created:
+                  value:
+                    userId: 11111111-1111-1111-1111-111111111111
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    workspaceName: Alpha Workspace
+                    role: owner
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /auth/login:
+    post:
+      summary: Sign in a registered user
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sign-in succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceSessionResponse'
+              examples:
+                signedIn:
+                  value:
+                    userId: 11111111-1111-1111-1111-111111111111
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    workspaceName: Alpha Workspace
+                    role: owner
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      summary: Sign out the current user
+      operationId: logout
+      responses:
+        '204':
+          description: Sign-out succeeded
+  /workspaces/{workspaceId}/context:
+    get:
+      summary: Get the authenticated workspace context
+      operationId: getWorkspaceContext
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Workspace context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceContextResponse'
+              examples:
+                ownerContext:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    workspaceName: Alpha Workspace
+                    currentRole: owner
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /workspaces/{workspaceId}/memberships:
+    get:
+      summary: List memberships for a workspace
+      operationId: listMemberships
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Membership list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MembershipResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Add a user to a workspace
+      operationId: createMembership
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMembershipRequest'
+      responses:
+        '201':
+          description: Membership created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/memberships/{membershipId}:
+    patch:
+      summary: Update membership role or status
+      operationId: updateMembership
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/MembershipId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMembershipRequest'
+      responses:
+        '200':
+          description: Membership updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Change would violate workspace ownership rules
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                lastOwnerConflict:
+                  value:
+                    status: 409
+                    title: Conflict
+                    detail: A workspace must keep at least one owner.
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+    MembershipId:
+      name: membershipId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            duplicateEmail:
+              value:
+                status: 400
+                title: Bad Request
+                detail: An account already exists for this email.
+    Unauthorized:
+      description: Authentication required or credentials invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidCredentials:
+              value:
+                status: 401
+                title: Unauthorized
+                detail: Invalid credentials.
+    Forbidden:
+      description: Caller is not authorized for the requested workspace action
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            crossWorkspaceDenied:
+              value:
+                status: 403
+                title: Forbidden
+                detail: User is not a member of the requested workspace.
+    NotFound:
+      description: Requested resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  schemas:
+    RegisterWorkspaceRequest:
+      type: object
+      required:
+        - email
+        - password
+        - displayName
+        - workspaceName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        displayName:
+          type: string
+        workspaceName:
+          type: string
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    CreateMembershipRequest:
+      type: object
+      required:
+        - userEmail
+        - role
+      properties:
+        userEmail:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [owner, admin, member]
+    UpdateMembershipRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [owner, admin, member]
+        status:
+          type: string
+          enum: [active, inactive, removed]
+    WorkspaceSessionResponse:
+      type: object
+      required:
+        - userId
+        - workspaceId
+        - role
+      properties:
+        userId:
+          type: string
+        workspaceId:
+          type: string
+        workspaceName:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member]
+    WorkspaceContextResponse:
+      type: object
+      required:
+        - workspaceId
+        - workspaceName
+        - currentRole
+      properties:
+        workspaceId:
+          type: string
+        workspaceName:
+          type: string
+        currentRole:
+          type: string
+          enum: [owner, admin, member]
+        memberCount:
+          type: integer
+          minimum: 0
+    MembershipResponse:
+      type: object
+      required:
+        - membershipId
+        - userId
+        - email
+        - role
+        - status
+      properties:
+        membershipId:
+          type: string
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member]
+        status:
+          type: string
+          enum: [active, inactive, removed]
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
