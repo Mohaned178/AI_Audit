@@ -1,6 +1,31 @@
 @AIUsageGuard.Api_HostAddress = http://localhost:5172
 
-GET {{AIUsageGuard.Api_HostAddress}}/weatherforecast/
+### Register a workspace owner
+POST {{AIUsageGuard.Api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "Password123!",
+  "displayName": "Owner",
+  "workspaceName": "Alpha Workspace"
+}
+
+### Submit an AI usage event
+POST {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/events
+Content-Type: application/json
+
+{
+  "idempotencyKey": "evt-001",
+  "eventType": "prompt_submitted",
+  "occurredAt": "2026-04-21T12:00:00Z",
+  "toolName": "ChatGPT",
+  "modelName": "gpt-5.4",
+  "promptPreview": "hello"
+}
+
+### List AI usage events
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/events?pageNumber=1&pageSize=50
 Accept: application/json
 
 ###

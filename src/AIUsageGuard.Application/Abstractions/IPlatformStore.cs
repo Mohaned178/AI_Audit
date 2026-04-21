@@ -24,4 +24,25 @@ public interface IPlatformStore
 
     Task AddAuditAsync(AuditRecord record, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditRecord>> ListAuditsAsync(CancellationToken cancellationToken = default);
+
+    Task<AIUsageEvent?> FindAIUsageEventByIdempotencyKeyAsync(Guid workspaceId, string idempotencyKey, CancellationToken cancellationToken = default);
+    Task AddAIUsageEventAsync(AIUsageEvent aiUsageEvent, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AIUsageEvent>> ListAIUsageEventsAsync(
+        Guid workspaceId,
+        AIUsageEventType? eventType,
+        Guid? actorUserId,
+        string? toolName,
+        DateTimeOffset? fromOccurredAt,
+        DateTimeOffset? toOccurredAt,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+    Task<int> CountAIUsageEventsAsync(
+        Guid workspaceId,
+        AIUsageEventType? eventType,
+        Guid? actorUserId,
+        string? toolName,
+        DateTimeOffset? fromOccurredAt,
+        DateTimeOffset? toOccurredAt,
+        CancellationToken cancellationToken = default);
 }

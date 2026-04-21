@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using AIUsageGuard.Api.Contracts.AIUsageEvents;
 using AIUsageGuard.Api.Contracts.Auth;
 using AIUsageGuard.Api.Contracts.Memberships;
 using AIUsageGuard.Api.Contracts.Workspaces;
@@ -87,6 +88,81 @@ internal static class ApiTestClient
     public static async Task<ProblemDetails> ReadProblemAsync(this HttpResponseMessage response)
     {
         return (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
+    }
+
+    public static async Task<HttpResponseMessage> IngestAIUsageEventResponseAsync(
+        this HttpClient client,
+        Guid workspaceId,
+        IngestAIUsageEventRequest request)
+    {
+        return await client.PostAsJsonAsync($"/workspaces/{workspaceId}/events", request);
+    }
+
+    public static async Task<EventIngestionResponse> IngestAIUsageEventAsync(
+        this HttpClient client,
+        Guid workspaceId,
+        IngestAIUsageEventRequest request)
+    {
+        var response = await client.IngestAIUsageEventResponseAsync(workspaceId, request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"Ingest AI usage event failed with {(int)response.StatusCode}: {body}");
+        }
+
+        return (await response.Content.ReadFromJsonAsync<EventIngestionResponse>())!;
+    }
+
+    public static async Task<HttpResponseMessage> ListAIUsageEventsResponseAsync(
+        this HttpClient client,
+        Guid workspaceId,
+        ListAIUsageEventsRequest request)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(request.EventType))
+        {
+            query.Add($"eventType={Uri.EscapeDataString(request.EventType)}");
+        }
+
+        if (request.ActorUserId.HasValue)
+        {
+            query.Add($"actorUserId={request.ActorUserId.Value}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ToolName))
+        {
+            query.Add($"toolName={Uri.EscapeDataString(request.ToolName)}");
+        }
+
+        if (request.FromOccurredAt.HasValue)
+        {
+            query.Add($"fromOccurredAt={Uri.EscapeDataString(request.FromOccurredAt.Value.ToString("O"))}");
+        }
+
+        if (request.ToOccurredAt.HasValue)
+        {
+            query.Add($"toOccurredAt={Uri.EscapeDataString(request.ToOccurredAt.Value.ToString("O"))}");
+        }
+
+        query.Add($"pageNumber={request.PageNumber}");
+        query.Add($"pageSize={request.PageSize}");
+
+        return await client.GetAsync($"/workspaces/{workspaceId}/events?{string.Join("&", query)}");
+    }
+
+    public static async Task<AIUsageEventHistoryResponse> ListAIUsageEventsAsync(
+        this HttpClient client,
+        Guid workspaceId,
+        ListAIUsageEventsRequest request)
+    {
+        var response = await client.ListAIUsageEventsResponseAsync(workspaceId, request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"List AI usage events failed with {(int)response.StatusCode}: {body}");
+        }
+
+        return (await response.Content.ReadFromJsonAsync<AIUsageEventHistoryResponse>())!;
     }
 
     public static async Task LogoutAsync(this HttpClient client)
