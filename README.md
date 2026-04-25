@@ -1,63 +1,39 @@
 # AI Usage Guard
 
-AI Usage Guard is a backend-first SaaS for monitoring how employees use AI tools inside a workspace. It captures usage events, detects risky activity such as sensitive prompts, file uploads, and unapproved tool usage, and gives workspace owners and admins the reporting they need to control cost, exposure, and policy compliance.
+AI Usage Guard is a backend-first SaaS platform for monitoring how employees use AI tools inside a workspace. It records AI usage events, evaluates them against workspace policy, highlights risky behavior, and exposes the reporting and audit data needed for governance, cost control, and compliance.
 
-## Short Summary
+## What It Does
 
-The product is designed for organizations that want to adopt AI tools without losing governance. It combines event ingestion, risk evaluation, audit logging, billing awareness, notifications, and workspace-scoped reporting in a single ASP.NET Core backend.
+- Ingests workspace-scoped AI usage events with idempotency support.
+- Detects risky activity such as sensitive prompts, file uploads, unapproved tools, and cost threshold breaches.
+- Enforces workspace membership and role-based access for owners, admins, and members.
+- Tracks billing state, usage cycles, dashboard summaries, and cost reports.
+- Stores audit logs for security-sensitive and administrative activity.
+- Runs background workflows for urgent alerts, digest generation, notification retries, and billing reconciliation.
 
-## Problem Statement
+## Current Scope
 
-AI adoption creates operational risk faster than most companies can manage it manually.
+The repository currently includes the backend foundation plus these implemented feature areas:
 
-- Employees may paste confidential data into prompts.
-- Users may upload files that should never leave company boundaries.
-- Teams may call AI tools that were never approved by security or procurement.
-- AI usage can grow quietly, making spend and accountability difficult to track.
+- `002-core-saas-foundation`
+- `003-ai-usage-ingestion`
+- `004-risk-detection-engine`
+- `005-reporting-dashboard-apis`
+- `006-background-jobs-notifications`
+- `007-usage-limits-billing`
+- `008-audit-logs-hardening`
 
-AI Usage Guard addresses those problems with a central backend that records activity, evaluates policy, and exposes the right data to admins and owners.
+Specs and supporting design artifacts live under [`specs/`](specs).
 
-## Main Features
+## Architecture
 
-- Workspace-based AI usage ingestion with idempotency support.
-- Risk detection for sensitive prompts, file uploads, unapproved tools, and cost thresholds.
-- Workspace risk policies that control how events are evaluated.
-- Role-based access for owners, admins, and members.
-- Membership management for workspace access control.
-- Audit logs for authentication, administrative actions, and security events.
-- Billing cycle tracking and estimated cost reporting.
-- Dashboards and reports for usage by user, usage by tool, alerts, and cost summaries.
-- Notification preferences and background delivery workflows.
-- Workspace-scoped APIs with cross-tenant isolation enforced at the backend.
+The solution follows a layered ASP.NET Core design:
 
-## Target Users
-
-- Workspace owners who need oversight, governance, and accountability.
-- Workspace admins who review risk findings and operational reports.
-- Security and compliance teams that need an audit trail and policy enforcement.
-- Platform or engineering teams integrating AI governance into internal tools.
-
-## Core Workflow
-
-1. A workspace is created through registration or an admin onboarding flow.
-2. Users authenticate with cookie-based identity and are placed into a workspace context.
-3. AI usage events are ingested from approved clients or internal integrations.
-4. The backend stores the event, evaluates risk rules, and records findings when needed.
-5. Usage rolls into billing cycles, dashboards, alert summaries, and cost reports.
-6. Background workers generate digests, retry deliveries, and reconcile late usage.
-7. Owners and admins inspect events, findings, audit logs, and reports through the API.
-
-## Architecture Overview
-
-The solution follows a layered ASP.NET Core architecture:
-
-- `AIUsageGuard.Api` hosts HTTP controllers, authentication, authorization, antiforgery, health checks, request logging, and the middleware pipeline.
-- `AIUsageGuard.Application` contains use-case services, commands, queries, and business-oriented models.
-- `AIUsageGuard.Domain` defines the core business entities and enumerations for workspaces, users, memberships, AI usage, risk, billing, auditing, and notifications.
-- `AIUsageGuard.Infrastructure` implements EF Core persistence, ASP.NET Core Identity, notification delivery, background workers, tenancy helpers, and other runtime integrations.
-- `tests/` contains unit and integration tests for services, policy logic, persistence, and API behavior.
-
-The controllers stay thin. The application layer owns the workflow. Infrastructure is responsible for data access, background execution, and platform concerns.
+- `AIUsageGuard.Api` hosts controllers, auth, authorization, antiforgery, Swagger, health checks, and the HTTP pipeline.
+- `AIUsageGuard.Application` contains use-case services, query/command handlers, options, and application models.
+- `AIUsageGuard.Domain` defines core business entities and enums.
+- `AIUsageGuard.Infrastructure` implements EF Core persistence, Identity storage, tenancy helpers, notification delivery, and hosted background workers.
+- `tests/` contains unit and integration coverage across API, persistence, policy, reporting, billing, and security flows.
 
 ## Tech Stack
 
@@ -66,73 +42,43 @@ The controllers stay thin. The application layer owns the workflow. Infrastructu
 - ASP.NET Core 10 Web API
 - ASP.NET Core Identity
 - Entity Framework Core 10
-- PostgreSQL for application and identity persistence
-- Npgsql Entity Framework provider
-- SQLite for local/test scenarios where configured
-- xUnit for automated testing
+- PostgreSQL with Npgsql
+- SQLite support for selected local or test scenarios
+- xUnit
+- Docker Compose for local API + PostgreSQL development
 
-## Project Structure
+## Repository Layout
 
 ```text
 src/
   AIUsageGuard.Api/
-    Controllers/
-    Contracts/
-    Policies/
-    Security/
-    Program.cs
-    appsettings.json
-    appsettings.Development.json
   AIUsageGuard.Application/
-    AIUsageEvents/
-    Auditing/
-    BackgroundJobs/
-    Billing/
-    Identity/
-    Memberships/
-    Notifications/
-    Reporting/
-    RiskDetection/
-    Security/
-    Workspaces/
   AIUsageGuard.Domain/
-    AIUsageEvents/
-    Auditing/
-    Memberships/
-    RiskDetection/
-    Users/
-    Workspaces/
   AIUsageGuard.Infrastructure/
-    Auditing/
-    BackgroundProcessing/
-    Billing/
-    Identity/
-    Notifications/
-    Persistence/
-    Tenancy/
 tests/
   AIUsageGuard.UnitTests/
   AIUsageGuard.IntegrationTests/
-specs/
 docs/
+specs/
+.specify/
 ```
 
-Generated artifacts such as `bin/`, `obj/`, and `.artifacts/` are not part of the source tree.
+Generated output such as `bin/`, `obj/`, `.vs/`, and `.artifacts/` is not part of the source layout.
 
-## Setup and Run Instructions
+## Quick Start
 
 ### Prerequisites
 
 - .NET 10 SDK
-- PostgreSQL instance for local development
+- PostgreSQL for local host-based development, or Docker Desktop for the containerized flow
 
-### Restore dependencies
+### Restore
 
 ```bash
 dotnet restore AIUsageGuard.slnx
 ```
 
-### Build the solution
+### Build
 
 ```bash
 dotnet build AIUsageGuard.slnx
@@ -144,59 +90,59 @@ dotnet build AIUsageGuard.slnx
 dotnet run --project src/AIUsageGuard.Api/AIUsageGuard.Api.csproj
 ```
 
-The API uses the ports defined in the ASP.NET Core launch settings for development runs.
+Development launch settings expose the API on:
 
-### Run with Docker Compose
+- `http://localhost:5172`
+- `https://localhost:7015`
 
-The repository includes a local-development Docker setup for the API and PostgreSQL only. It is intended for demos, manual testing, and portfolio walkthroughs, not for production deployment.
+Swagger is available in Development at:
 
-See [docs/docker-local-development.md](docs/docker-local-development.md) for the complete Docker workflow, including host-side EF Core migration commands against the containerized PostgreSQL instance.
+- `http://localhost:5172/swagger`
+- `https://localhost:7015/swagger`
+
+Health checks:
+
+- `http://localhost:5172/health`
+- `https://localhost:7015/health`
+
+## Docker Local Development
+
+The repository includes a two-service local Docker setup:
+
+- `postgres` on host port `5433`
+- `api` on host port `5172`
+
+Start the stack:
 
 ```bash
 docker compose up --build -d
 ```
 
-This starts:
+Useful URLs:
 
-- `postgres` on host port `5433`
-- `api` on host port `5172`
+- Swagger: `http://localhost:5172/swagger`
+- Health: `http://localhost:5172/health`
 
-Inside Docker, the API uses the PostgreSQL compose service name:
-
-```text
-Host=postgres;Port=5432;Database=ai_usage_guard_dev;Username=postgres;Password=postgres
-```
-
-From the host machine, Swagger is available at:
-
-```text
-http://localhost:5172/swagger
-```
-
-Health checks are available at:
-
-```text
-http://localhost:5172/health
-```
-
-To stop the stack:
+Stop the stack:
 
 ```bash
 docker compose down
 ```
 
-To stop the stack and remove the PostgreSQL volume:
+Remove the PostgreSQL volume too:
 
 ```bash
 docker compose down -v
 ```
 
-## Environment Variables
+Full Docker notes are in [docs/docker-local-development.md](docs/docker-local-development.md).
 
-The application relies on standard ASP.NET Core configuration. The most relevant settings are:
+## Configuration
 
-- `ConnectionStrings__DefaultConnection` - primary database connection string.
-- `Database__Provider` - set to `Postgres` or `Sqlite`.
+The application uses standard ASP.NET Core configuration. The most important settings are:
+
+- `ConnectionStrings__DefaultConnection`
+- `Database__Provider`
 - `Notifications__Processing__WorkerInterval`
 - `Notifications__Processing__PendingDeliveryBatchSize`
 - `Notifications__Processing__UrgentAlertBatchSize`
@@ -215,35 +161,39 @@ The application relies on standard ASP.NET Core configuration. The most relevant
 - `Security__ProtectedRequestIntegrity__RequireForUnsafeMethods`
 - `Security__ProtectedRequestIntegrity__HeaderName`
 
-Default values are defined in `src/AIUsageGuard.Api/appsettings.json` and `src/AIUsageGuard.Api/appsettings.Development.json`.
+Defaults live in:
 
-For Docker Compose local development, the key overrides are:
+- `src/AIUsageGuard.Api/appsettings.json`
+- `src/AIUsageGuard.Api/appsettings.Development.json`
 
-- `ASPNETCORE_ENVIRONMENT=Development`
-- `ASPNETCORE_URLS=http://+:8080`
-- `Database__Provider=Postgres`
-- `ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ai_usage_guard_dev;Username=postgres;Password=postgres`
+### Connection Strings
+
+Use the correct PostgreSQL host for the environment:
+
+- Inside Docker: `Host=postgres;Port=5432;Database=ai_usage_guard_dev;Username=postgres;Password=postgres`
+- From the host machine: `Host=localhost;Port=5433;Database=ai_usage_guard_dev;Username=postgres;Password=postgres`
 
 ## Database and Migrations
 
-Entity Framework Core migrations live in:
+EF Core migrations live in:
 
 ```text
 src/AIUsageGuard.Infrastructure/Persistence/Migrations/
 ```
 
-They cover the full platform schema, including identity, workspaces, memberships, usage events, risk findings, billing cycles, notifications, audit records, and supporting indexes.
-
-Typical commands:
+Create a migration:
 
 ```bash
 dotnet ef migrations add <MigrationName> --project src/AIUsageGuard.Infrastructure/AIUsageGuard.Infrastructure.csproj --startup-project src/AIUsageGuard.Api/AIUsageGuard.Api.csproj
+```
+
+Apply migrations:
+
+```bash
 dotnet ef database update --project src/AIUsageGuard.Infrastructure/AIUsageGuard.Infrastructure.csproj --startup-project src/AIUsageGuard.Api/AIUsageGuard.Api.csproj
 ```
 
-### Apply Migrations Against the Docker PostgreSQL Database
-
-The API container does not apply EF Core migrations automatically. For local development, start the Docker PostgreSQL service first, then run EF Core from the host machine against port `5433`.
+To apply migrations against the Docker PostgreSQL instance, first start Compose and then point EF Core at host port `5433`.
 
 PowerShell:
 
@@ -260,36 +210,29 @@ ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=ai_usage
 dotnet ef database update --project src/AIUsageGuard.Infrastructure/AIUsageGuard.Infrastructure.csproj --startup-project src/AIUsageGuard.Api/AIUsageGuard.Api.csproj
 ```
 
-Use the correct host based on where the process runs:
-
-- inside Docker: `Host=postgres;Port=5432`
-- from the host machine: `Host=localhost;Port=5433`
-
-## API Overview
-
-The API is organized around workspace-scoped routes and backend administration flows.
+## API Surface
 
 Authentication:
 
-- `POST /auth/register` - create a workspace and initial owner session.
-- `POST /auth/login` - sign in an existing user.
-- `POST /auth/logout` - end the current session.
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/logout`
 
 Workspace context:
 
-- `GET /workspaces/{workspaceId}/context` - resolve the active workspace context.
+- `GET /workspaces/{workspaceId}/context`
 
 AI usage:
 
-- `POST /workspaces/{workspaceId}/events` - ingest a new AI usage event.
-- `GET /workspaces/{workspaceId}/events` - list workspace events.
+- `POST /workspaces/{workspaceId}/events`
+- `GET /workspaces/{workspaceId}/events`
 
 Risk detection:
 
-- `GET /workspaces/{workspaceId}/risk-policy` - read the current risk policy.
-- `PUT /workspaces/{workspaceId}/risk-policy` - update the risk policy.
-- `GET /workspaces/{workspaceId}/risk-findings` - list findings.
-- `GET /workspaces/{workspaceId}/risk-findings/{findingId}` - fetch finding details.
+- `GET /workspaces/{workspaceId}/risk-policy`
+- `PUT /workspaces/{workspaceId}/risk-policy`
+- `GET /workspaces/{workspaceId}/risk-findings`
+- `GET /workspaces/{workspaceId}/risk-findings/{findingId}`
 
 Billing and reporting:
 
@@ -314,50 +257,59 @@ Governance and operations:
 - `POST /workspaces/{workspaceId}/memberships`
 - `PATCH /workspaces/{workspaceId}/memberships/{membershipId}`
 
-Development-only helper:
+Development helper:
 
-- `GET /dev/antiforgery-token` - return a fresh antiforgery request token and set the cookie required for protected write requests.
+- `GET /dev/antiforgery-token`
 
-Security controls are enforced with cookie authentication, workspace policies, authorization handlers, antiforgery protection on unsafe requests, and workspace context tracking to prevent cross-tenant access.
+## Security Model
 
-## Example Use Case / Demo Scenario
+- Cookie authentication is used for application sessions.
+- Workspace policies enforce member, admin, and owner access levels.
+- Antiforgery protection is enabled for protected write requests.
+- Workspace context tracking prevents cross-tenant access.
+- Sign-in hardening options support failed-attempt windows and lockout behavior.
+- Correlation IDs are echoed through the API response headers for request tracing.
 
-A finance company wants employees to use AI assistants without exposing client data or losing spend control.
-
-1. A security lead creates the workspace and becomes the initial owner.
-2. The team adds members and approves a narrow set of AI tools.
-3. Employees start submitting prompts and file uploads through an internal integration.
-4. The backend flags a prompt that contains sensitive data and stores a finding for review.
-5. A usage report shows which users and tools are driving cost.
-6. An urgent notification is created for the security team, while the weekly digest keeps leadership informed.
-7. Audit logs preserve the administrative history for compliance review.
-
-This is the kind of flow the system is meant to support: operational visibility without turning the product into a frontend-heavy dashboard app.
+For manual testing in Development, call `GET /dev/antiforgery-token` first and then send the returned token in the `X-CSRF-TOKEN` header for protected write requests.
 
 ## Testing
 
-The repository includes both unit and integration test coverage.
+Run unit tests:
 
 ```bash
 dotnet test tests/AIUsageGuard.UnitTests/AIUsageGuard.UnitTests.csproj
+```
+
+Run integration tests:
+
+```bash
 dotnet test tests/AIUsageGuard.IntegrationTests/AIUsageGuard.IntegrationTests.csproj
 ```
 
-Unit tests focus on service behavior, policy evaluation, and business rules. Integration tests cover controllers, authentication, authorization, persistence, and workspace isolation.
+Test coverage currently includes:
 
-For manual testing in Development, call `GET /dev/antiforgery-token` first, then send the returned request token in the `X-CSRF-TOKEN` header when calling protected write endpoints such as `POST /workspaces/{workspaceId}/events`.
+- authentication and workspace onboarding
+- event ingestion and deduplication
+- workspace isolation and authorization
+- risk evaluation and policy management
+- billing cycles and plan-status flows
+- reporting and dashboard APIs
+- notifications and digest workflows
+- audit log access and security hardening
 
-The same antiforgery flow applies when the API runs in Docker Compose because the container stays in the `Development` environment for local testing.
+See [docs/api-test-cases.md](docs/api-test-cases.md) for API-oriented manual test coverage.
 
-## Future Improvements
+## Roadmap
 
-- Add richer ingestion adapters for browser extensions and third-party AI platforms.
-- Expand risk scoring with configurable weights, thresholds, and rule groups.
-- Add rate limiting and usage quotas at the API edge.
-- Improve reporting exports for compliance and finance teams.
-- Add more delivery channels for alerts and digests.
-- Improve observability for background jobs and failed deliveries.
+Likely next steps for the platform:
 
-## Conclusion
+- richer ingestion adapters for browser and third-party AI tools
+- more configurable risk scoring and rule composition
+- stronger API edge controls such as rate limiting and quotas
+- improved reporting export formats for finance and compliance
+- additional notification channels
+- deeper operational telemetry for background processing
 
-AI Usage Guard is a practical backend foundation for AI governance in the enterprise. It focuses on the hard parts that matter to security, compliance, and operations: authenticated workspace access, event ingestion, risk detection, cost visibility, auditability, and tenant isolation. The result is a credible SaaS backend for teams that need to control AI usage without blocking adoption.
+## License
+
+No license file is currently included in the repository.
