@@ -1,0 +1,323 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Audit Logs API
+  version: 0.1.0
+  description: >
+    Phase 7 HTTP contract for workspace-scoped audit log investigation.
+servers:
+  - url: https://api.example.com
+paths:
+  /workspaces/{workspaceId}/audit-logs:
+    get:
+      summary: List workspace audit log entries
+      operationId: listAuditLogs
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/FromOccurredAt'
+        - $ref: '#/components/parameters/ToOccurredAt'
+        - $ref: '#/components/parameters/ActionType'
+        - $ref: '#/components/parameters/Result'
+        - $ref: '#/components/parameters/ActorUserId'
+        - $ref: '#/components/parameters/SecurityRelevant'
+      responses:
+        '200':
+          description: Paged audit log entries for the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+              examples:
+                firstPage:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    page:
+                      items:
+                        - auditLogId: 77777777-7777-7777-7777-777777777777
+                          occurredAtUtc: '2026-04-23T10:14:00Z'
+                          actorUserId: 33333333-3333-3333-3333-333333333333
+                          actorDisplayName: Owner One
+                          actionType: billing.plan_status.read
+                          category: billing
+                          targetType: plan_status
+                          targetId: 22222222-2222-2222-2222-222222222222
+                          result: success
+                          reason: Retrieved plan status for plan starter.
+                          isSecurityRelevant: false
+                          correlationId: corr-7f8af7d1
+                        - auditLogId: 88888888-8888-8888-8888-888888888888
+                          occurredAtUtc: '2026-04-23T10:10:00Z'
+                          actorUserId: 44444444-4444-4444-4444-444444444444
+                          actorDisplayName: Unknown
+                          actionType: authorization.denied
+                          category: authorization
+                          targetType: billing_cycle_history
+                          targetId: 22222222-2222-2222-2222-222222222222
+                          result: denied
+                          reason: User is not a member of the requested workspace.
+                          isSecurityRelevant: true
+                          correlationId: corr-98a1112c
+                      pageNumber: 1
+                      pageSize: 20
+                      totalCount: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/audit-logs/{auditLogId}:
+    get:
+      summary: Retrieve one workspace audit log entry
+      operationId: getAuditLog
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/AuditLogId'
+      responses:
+        '200':
+          description: Detailed audit log entry for the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogDetailResponse'
+              examples:
+                deniedAccess:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    auditLog:
+                      auditLogId: 88888888-8888-8888-8888-888888888888
+                      occurredAtUtc: '2026-04-23T10:10:00Z'
+                      actorUserId: 44444444-4444-4444-4444-444444444444
+                      actorDisplayName: Unknown
+                      actionType: authorization.denied
+                      category: authorization
+                      targetType: billing_cycle_history
+                      targetId: 22222222-2222-2222-2222-222222222222
+                      result: denied
+                      reason: User is not a member of the requested workspace.
+                      isSecurityRelevant: true
+                      correlationId: corr-98a1112c
+                      clientContext:
+                        ipAddressHash: iphash-2ac4
+                        userAgent: Mozilla/5.0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AuditLogId:
+      name: auditLogId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageNumber:
+      name: pageNumber
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    FromOccurredAt:
+      name: fromOccurredAt
+      in: query
+      schema:
+        type: string
+        format: date-time
+    ToOccurredAt:
+      name: toOccurredAt
+      in: query
+      schema:
+        type: string
+        format: date-time
+    ActionType:
+      name: actionType
+      in: query
+      schema:
+        type: string
+    Result:
+      name: result
+      in: query
+      schema:
+        type: string
+        enum:
+          - success
+          - failed
+          - denied
+          - duplicate
+    ActorUserId:
+      name: actorUserId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    SecurityRelevant:
+      name: securityRelevant
+      in: query
+      schema:
+        type: boolean
+  responses:
+    BadRequest:
+      description: Invalid audit log query
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidDateRange:
+              value:
+                status: 400
+                title: Bad Request
+                detail: toOccurredAt must be later than or equal to fromOccurredAt.
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Caller is not authorized to access this workspace audit history
+    NotFound:
+      description: The requested audit log entry was not found for the workspace
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            auditMissing:
+              value:
+                status: 404
+                title: Not Found
+                detail: Audit log 88888888-8888-8888-8888-888888888888 was not found for the requested workspace.
+  schemas:
+    AuditLogClientContext:
+      type: object
+      properties:
+        ipAddressHash:
+          type: string
+          nullable: true
+        userAgent:
+          type: string
+          nullable: true
+    AuditLogSummary:
+      type: object
+      required:
+        - auditLogId
+        - occurredAtUtc
+        - actionType
+        - category
+        - targetType
+        - result
+        - reason
+        - isSecurityRelevant
+      properties:
+        auditLogId:
+          type: string
+          format: uuid
+        occurredAtUtc:
+          type: string
+          format: date-time
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        actorDisplayName:
+          type: string
+          nullable: true
+        actionType:
+          type: string
+        category:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+          nullable: true
+        result:
+          type: string
+        reason:
+          type: string
+        isSecurityRelevant:
+          type: boolean
+        correlationId:
+          type: string
+          nullable: true
+    AuditLogDetail:
+      allOf:
+        - $ref: '#/components/schemas/AuditLogSummary'
+        - type: object
+          properties:
+            clientContext:
+              $ref: '#/components/schemas/AuditLogClientContext'
+    AuditLogPage:
+      type: object
+      required:
+        - items
+        - pageNumber
+        - pageSize
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    AuditLogListResponse:
+      type: object
+      required:
+        - workspaceId
+        - page
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        page:
+          $ref: '#/components/schemas/AuditLogPage'
+    AuditLogDetailResponse:
+      type: object
+      required:
+        - workspaceId
+        - auditLog
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        auditLog:
+          $ref: '#/components/schemas/AuditLogDetail'
+    ProblemDetails:
+      type: object
+      required:
+        - status
+        - title
+      properties:
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true

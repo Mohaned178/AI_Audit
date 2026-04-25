@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AIUsageGuard.Api.Contracts.Memberships;
 using AIUsageGuard.Api.Policies;
+using AIUsageGuard.Api.Security;
 using AIUsageGuard.Application.Abstractions;
 using AIUsageGuard.Application.Memberships.CreateMembership;
 using AIUsageGuard.Application.Memberships.ListMemberships;
@@ -48,6 +49,7 @@ public sealed class MembershipsController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = WorkspacePolicies.WorkspaceAdmin)]
+    [RequireProtectedRequestIntegrity]
     public async Task<ActionResult<MembershipResponse>> Create(
         [FromRoute] Guid workspaceId,
         [FromBody] CreateMembershipRequest request,
@@ -66,6 +68,7 @@ public sealed class MembershipsController : ControllerBase
 
     [HttpPatch("{membershipId:guid}")]
     [Authorize(Policy = WorkspacePolicies.WorkspaceAdmin)]
+    [RequireProtectedRequestIntegrity]
     public async Task<ActionResult<MembershipResponse>> Update(
         [FromRoute] Guid workspaceId,
         [FromRoute] Guid membershipId,

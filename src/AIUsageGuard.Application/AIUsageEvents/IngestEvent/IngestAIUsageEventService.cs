@@ -1,8 +1,11 @@
 using System.Text.Json;
 using AIUsageGuard.Application.Abstractions;
 using AIUsageGuard.Application.Auditing;
+using AIUsageGuard.Application.Billing;
+using AIUsageGuard.Application.Billing.ApplyWorkspacePlanAssignment;
 using AIUsageGuard.Application.Errors;
 using AIUsageGuard.Application.Models;
+using AIUsageGuard.Application.RiskDetection.EvaluateEvent;
 
 namespace AIUsageGuard.Application.AIUsageEvents.IngestEvent;
 
@@ -14,11 +17,22 @@ public sealed class IngestAIUsageEventService
 
     private readonly IPlatformStore _store;
     private readonly IAuditService _auditService;
+    private readonly EvaluateAIUsageEventRiskService _riskEvaluationService;
+    private readonly ApplyWorkspacePlanAssignmentService _planAssignmentService;
+    private readonly BillingLimitEvaluator _limitEvaluator;
 
-    public IngestAIUsageEventService(IPlatformStore store, IAuditService auditService)
+    public IngestAIUsageEventService(
+        IPlatformStore store,
+        IAuditService auditService,
+        EvaluateAIUsageEventRiskService riskEvaluationService,
+        ApplyWorkspacePlanAssignmentService planAssignmentService,
+        BillingLimitEvaluator limitEvaluator)
     {
         _store = store;
         _auditService = auditService;
+        _riskEvaluationService = riskEvaluationService;
+        _planAssignmentService = planAssignmentService;
+        _limitEvaluator = limitEvaluator;
     }
 
     public async Task<IngestAIUsageEventResult> IngestAsync(IngestAIUsageEventCommand command, CancellationToken cancellationToken = default)
@@ -33,6 +47,37 @@ public sealed class IngestAIUsageEventService
             {
                 await _auditService.RecordAsync(CreateAudit(command, "duplicate", existing.Id.ToString(), "Duplicate event submission ignored."), cancellationToken);
                 return new IngestAIUsageEventResult(existing, true);
+            }
+
+            var targetCycle = await ResolveCycleAsync(command, cancellationToken);
+            UsageCycleMetric? activityMetric = null;
+            UsageCycleMetric? estimatedCostMetric = null;
+            decimal? projectedActivityCount = null;
+            decimal? projectedEstimatedCost = null;
+            var isCurrentOpenCycle = targetCycle is not null &&
+                targetCycle.Status == UsageCycleStatus.Open &&
+                command.OccurredAt >= targetCycle.CycleStartUtc &&
+                command.OccurredAt < targetCycle.CycleEndExclusiveUtc;
+
+            if (isCurrentOpenCycle)
+            {
+                activityMetric = await _store.FindUsageCycleMetricAsync(targetCycle!.Id, BillingDimension.AIActivityEvents, cancellationToken);
+                estimatedCostMetric = await _store.FindUsageCycleMetricAsync(targetCycle.Id, BillingDimension.EstimatedCost, cancellationToken);
+                projectedActivityCount = (activityMetric?.CurrentQuantity ?? 0m) + 1m;
+                projectedEstimatedCost = (estimatedCostMetric?.CurrentQuantity ?? 0m) + (command.EstimatedCost ?? 0m);
+
+                await EnsureWithinRestrictedLimitAsync(
+                    command,
+                    BillingDimension.AIActivityEvents,
+                    activityMetric,
+                    projectedActivityCount.Value,
+                    cancellationToken);
+                await EnsureWithinRestrictedLimitAsync(
+                    command,
+                    BillingDimension.EstimatedCost,
+                    estimatedCostMetric,
+                    projectedEstimatedCost.Value,
+                    cancellationToken);
             }
 
             var record = new AIUsageEvent
@@ -56,6 +101,36 @@ public sealed class IngestAIUsageEventService
             };
 
             await _store.AddAIUsageEventAsync(record, cancellationToken);
+            if (isCurrentOpenCycle)
+            {
+                if (activityMetric is not null)
+                {
+                    await _limitEvaluator.ApplyAsync(
+                        command.WorkspaceId,
+                        activityMetric,
+                        projectedActivityCount!.Value,
+                        record.OccurredAt,
+                        "AIUsageEvent",
+                        record.Id.ToString(),
+                        cancellationToken);
+                }
+
+                if (estimatedCostMetric is not null)
+                {
+                    await _limitEvaluator.ApplyAsync(
+                        command.WorkspaceId,
+                        estimatedCostMetric,
+                        projectedEstimatedCost!.Value,
+                        record.OccurredAt,
+                        "AIUsageEvent",
+                        record.Id.ToString(),
+                        cancellationToken);
+                }
+            }
+
+            await _riskEvaluationService.EvaluateAsync(
+                new EvaluateAIUsageEventRiskCommand(command.WorkspaceId, record.Id, command.ActorUserId),
+                cancellationToken);
             await _auditService.RecordAsync(CreateAudit(command, "success", record.Id.ToString(), "AI usage event accepted."), cancellationToken);
             return new IngestAIUsageEventResult(record, false);
         }
@@ -182,5 +257,47 @@ public sealed class IngestAIUsageEventService
             Result = result,
             Reason = reason
         };
+    }
+
+    private async Task<UsageCycle?> ResolveCycleAsync(
+        IngestAIUsageEventCommand command,
+        CancellationToken cancellationToken)
+    {
+        var currentCycle = await _planAssignmentService.EnsureCurrentCycleAsync(
+            command.WorkspaceId,
+            command.ActorUserId,
+            DateTimeOffset.UtcNow,
+            cancellationToken);
+
+        if (command.OccurredAt >= currentCycle.CycleStartUtc &&
+            command.OccurredAt < currentCycle.CycleEndExclusiveUtc)
+        {
+            return currentCycle;
+        }
+
+        return await _store.FindCurrentUsageCycleAsync(command.WorkspaceId, command.OccurredAt, cancellationToken);
+    }
+
+    private async Task EnsureWithinRestrictedLimitAsync(
+        IngestAIUsageEventCommand command,
+        BillingDimension dimension,
+        UsageCycleMetric? metric,
+        decimal projectedQuantity,
+        CancellationToken cancellationToken)
+    {
+        if (metric is null || !_limitEvaluator.WouldExceedHardLimit(metric, projectedQuantity))
+        {
+            return;
+        }
+
+        await _limitEvaluator.RecordDeniedActionAsync(
+            command.WorkspaceId,
+            command.ActorUserId,
+            dimension,
+            projectedQuantity,
+            metric.HardLimitQuantity ?? metric.IncludedQuantity,
+            "ai_usage_event.ingest",
+            cancellationToken);
+        throw new RequestFailureException(409, $"This event would exceed the workspace {dimension} limit for the current plan.");
     }
 }

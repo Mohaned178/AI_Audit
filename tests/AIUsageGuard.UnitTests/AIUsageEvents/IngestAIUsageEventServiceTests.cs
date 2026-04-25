@@ -1,8 +1,6 @@
 using AIUsageGuard.Application.Abstractions;
 using AIUsageGuard.Application.AIUsageEvents.IngestEvent;
-using AIUsageGuard.Application.Auditing;
 using AIUsageGuard.Application.Models;
-using AIUsageGuard.Infrastructure.Auditing;
 using AIUsageGuard.UnitTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,7 +44,8 @@ public sealed class IngestAIUsageEventServiceTests
         Assert.False(result.IsDuplicate);
         Assert.Equal("ChatGPT", result.Event.ToolName);
         Assert.Equal(1, await dbContext.AIUsageEvents.CountAsync());
-        Assert.Equal(1, await dbContext.AuditRecords.CountAsync());
+        Assert.Equal(1, await dbContext.RiskEvaluationOutcomes.CountAsync());
+        Assert.Equal(3, await dbContext.AuditRecords.CountAsync());
     }
 
     [Fact]
@@ -102,9 +101,10 @@ public sealed class IngestAIUsageEventServiceTests
         Assert.Equal(first.Event.Id, second.Event.Id);
         Assert.True(second.IsDuplicate);
         Assert.Equal(1, await dbContext.AIUsageEvents.CountAsync());
-        Assert.Equal(2, await dbContext.AuditRecords.CountAsync());
+        Assert.Equal(1, await dbContext.RiskEvaluationOutcomes.CountAsync());
+        Assert.Equal(4, await dbContext.AuditRecords.CountAsync());
     }
 
     private static IngestAIUsageEventService CreateService(IPlatformStore store)
-        => new(store, new AuditService(store));
+        => RiskDetectionTestFactory.CreateIngestService(store);
 }

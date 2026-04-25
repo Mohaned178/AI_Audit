@@ -1,6 +1,5 @@
 using AIUsageGuard.Application.AIUsageEvents.IngestEvent;
 using AIUsageGuard.Application.AIUsageEvents.ListEvents;
-using AIUsageGuard.Application.Auditing;
 using AIUsageGuard.Application.Models;
 using AIUsageGuard.Infrastructure.Auditing;
 using AIUsageGuard.UnitTests.Infrastructure;
@@ -24,7 +23,7 @@ public sealed class ListAIUsageEventsServiceTests
             CreatedByUserId = actorId
         });
         await dbContext.SaveChangesAsync();
-        var ingestService = new IngestAIUsageEventService(dbContext, new AuditService(dbContext));
+        var ingestService = RiskDetectionTestFactory.CreateIngestService(dbContext);
         var listService = new ListAIUsageEventsService(dbContext, new AuditService(dbContext));
 
         await ingestService.IngestAsync(new IngestAIUsageEventCommand(

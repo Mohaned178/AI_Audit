@@ -58,7 +58,11 @@ public sealed class UpdateMembershipStatusTests
         await store.AddMembershipAsync(memberMembership);
 
         IAuditService auditService = new AuditService(store);
-        var service = new UpdateMembershipService(store, auditService);
+        var service = new UpdateMembershipService(
+            store,
+            auditService,
+            BillingTestFactory.CreatePlanAssignmentService(store),
+            BillingTestFactory.CreateLimitEvaluator(store));
 
         var updated = await service.UpdateAsync(
             workspace.Id,

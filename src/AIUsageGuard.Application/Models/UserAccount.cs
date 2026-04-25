@@ -15,4 +15,10 @@ public sealed class UserAccount
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset? LastSignInAt { get; set; }
+
+    public int FailedSignInCount { get; set; }
+
+    public DateTimeOffset? LastFailedSignInAt { get; set; }
+
+    public DateTimeOffset? LockedUntilUtc { get; set; }
 }

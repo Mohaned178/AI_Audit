@@ -1,0 +1,615 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Billing and Limits API
+  version: 0.1.0
+  description: >
+    Phase 6 HTTP contract for workspace-scoped plan status and billing-ready
+    cycle history endpoints.
+servers:
+  - url: https://api.example.com
+paths:
+  /workspaces/{workspaceId}/billing/plan-status:
+    get:
+      summary: Retrieve the current plan status for a workspace
+      operationId: getWorkspacePlanStatus
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Current workspace-scoped plan status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanStatusResponse'
+              examples:
+                activePlan:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    plan:
+                      planCode: starter
+                      displayName: Starter
+                      assignedFromCycleStartUtc: '2026-04-01T00:00:00Z'
+                      nextPlanCode: growth
+                      nextPlanStartsAtUtc: '2026-05-01T00:00:00Z'
+                    currentCycle:
+                      cycleId: 77777777-7777-7777-7777-777777777777
+                      cycleStartUtc: '2026-04-01T00:00:00Z'
+                      cycleEndExclusiveUtc: '2026-05-01T00:00:00Z'
+                      status: open
+                    metrics:
+                      - dimension: active_members
+                        includedQuantity: 10
+                        warningThresholdQuantity: 8
+                        hardLimitQuantity: 10
+                        currentQuantity: 8
+                        remainingQuantity: 2
+                        overageQuantity: 0
+                        limitBehavior: restrict
+                        state: warning
+                      - dimension: ai_activity_events
+                        includedQuantity: 5000
+                        warningThresholdQuantity: 4500
+                        hardLimitQuantity: null
+                        currentQuantity: 4120
+                        remainingQuantity: 880
+                        overageQuantity: 0
+                        limitBehavior: allow_overage
+                        state: within_limit
+                      - dimension: estimated_cost
+                        includedQuantity: 150
+                        warningThresholdQuantity: 120
+                        hardLimitQuantity: null
+                        currentQuantity: 132.45
+                        remainingQuantity: 17.55
+                        overageQuantity: 0
+                        limitBehavior: allow_overage
+                        state: warning
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/billing/cycles:
+    get:
+      summary: List billing-ready monthly cycle summaries for a workspace
+      operationId: listBillingCycles
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged billing cycle summaries for the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingCycleListResponse'
+              examples:
+                firstPage:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    page:
+                      items:
+                        - cycleId: 77777777-7777-7777-7777-777777777777
+                          cycleStartUtc: '2026-04-01T00:00:00Z'
+                          cycleEndExclusiveUtc: '2026-05-01T00:00:00Z'
+                          status: open
+                          planCode: starter
+                          planDisplayName: Starter
+                          metrics:
+                            - dimension: active_members
+                              includedQuantity: 10
+                              currentQuantity: 8
+                              overageQuantity: 0
+                              state: warning
+                              limitBehavior: restrict
+                            - dimension: ai_activity_events
+                              includedQuantity: 5000
+                              currentQuantity: 4120
+                              overageQuantity: 0
+                              state: within_limit
+                              limitBehavior: allow_overage
+                            - dimension: estimated_cost
+                              includedQuantity: 150
+                              currentQuantity: 132.45
+                              overageQuantity: 0
+                              state: warning
+                              limitBehavior: allow_overage
+                          warningEventCount: 2
+                          restrictionEventCount: 0
+                          adjustmentCount: 0
+                        - cycleId: 66666666-6666-6666-6666-666666666666
+                          cycleStartUtc: '2026-03-01T00:00:00Z'
+                          cycleEndExclusiveUtc: '2026-04-01T00:00:00Z'
+                          status: adjusted
+                          planCode: starter
+                          planDisplayName: Starter
+                          metrics:
+                            - dimension: active_members
+                              includedQuantity: 10
+                              currentQuantity: 7
+                              overageQuantity: 0
+                              state: within_limit
+                              limitBehavior: restrict
+                            - dimension: ai_activity_events
+                              includedQuantity: 5000
+                              currentQuantity: 5235
+                              overageQuantity: 235
+                              state: overage
+                              limitBehavior: allow_overage
+                            - dimension: estimated_cost
+                              includedQuantity: 150
+                              currentQuantity: 161.20
+                              overageQuantity: 11.20
+                              state: overage
+                              limitBehavior: allow_overage
+                          warningEventCount: 1
+                          restrictionEventCount: 0
+                          adjustmentCount: 1
+                      pageNumber: 1
+                      pageSize: 20
+                      totalCount: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/billing/cycles/{cycleId}:
+    get:
+      summary: Retrieve one detailed billing cycle summary
+      operationId: getBillingCycle
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/CycleId'
+      responses:
+        '200':
+          description: Detailed billing cycle summary for the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingCycleDetailResponse'
+              examples:
+                cycleDetail:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    cycle:
+                      cycleId: 66666666-6666-6666-6666-666666666666
+                      cycleStartUtc: '2026-03-01T00:00:00Z'
+                      cycleEndExclusiveUtc: '2026-04-01T00:00:00Z'
+                      status: adjusted
+                      planCode: starter
+                      planDisplayName: Starter
+                      metrics:
+                        - dimension: active_members
+                          includedQuantity: 10
+                          currentQuantity: 7
+                          overageQuantity: 0
+                          state: within_limit
+                          limitBehavior: restrict
+                        - dimension: ai_activity_events
+                          includedQuantity: 5000
+                          currentQuantity: 5235
+                          overageQuantity: 235
+                          state: overage
+                          limitBehavior: allow_overage
+                        - dimension: estimated_cost
+                          includedQuantity: 150
+                          currentQuantity: 161.20
+                          overageQuantity: 11.20
+                          state: overage
+                          limitBehavior: allow_overage
+                      warningEventCount: 1
+                      restrictionEventCount: 0
+                      adjustmentCount: 1
+                    limitEvents:
+                      - eventId: 88888888-8888-8888-8888-888888888888
+                        eventType: warning_raised
+                        dimension: estimated_cost
+                        occurredAtUtc: '2026-03-27T09:42:00Z'
+                        currentQuantity: 123.40
+                        thresholdQuantity: 120
+                        reason: Workspace estimated cost crossed the warning threshold for the Starter plan.
+                      - eventId: 99999999-9999-9999-9999-999999999999
+                        eventType: overage_started
+                        dimension: ai_activity_events
+                        occurredAtUtc: '2026-03-31T23:10:00Z'
+                        currentQuantity: 5001
+                        thresholdQuantity: 5000
+                        reason: Workspace activity volume moved into overage for the Starter plan.
+                    adjustments:
+                      - adjustmentId: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+                        recordedAtUtc: '2026-04-01T00:08:00Z'
+                        dimension: ai_activity_events
+                        deltaQuantity: 234
+                        adjustmentType: late_activity
+                        sourceReference: event-import-2026-04-01-0008
+                        reason: Late accepted events for March were applied during reconciliation.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CycleId:
+      name: cycleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageNumber:
+      name: pageNumber
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Invalid paging request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidPageSize:
+              value:
+                status: 400
+                title: Bad Request
+                detail: pageSize must be between 1 and 100.
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Caller is not authorized for the requested workspace billing action
+    NotFound:
+      description: The requested billing cycle was not found for the workspace
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            cycleMissing:
+              value:
+                status: 404
+                title: Not Found
+                detail: Billing cycle 66666666-6666-6666-6666-666666666666 was not found for the requested workspace.
+  schemas:
+    PlanAssignmentSummary:
+      type: object
+      required:
+        - planCode
+        - displayName
+        - assignedFromCycleStartUtc
+      properties:
+        planCode:
+          type: string
+        displayName:
+          type: string
+        assignedFromCycleStartUtc:
+          type: string
+          format: date-time
+        nextPlanCode:
+          type: string
+          nullable: true
+        nextPlanStartsAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+    CurrentCycleSummary:
+      type: object
+      required:
+        - cycleId
+        - cycleStartUtc
+        - cycleEndExclusiveUtc
+        - status
+      properties:
+        cycleId:
+          type: string
+          format: uuid
+        cycleStartUtc:
+          type: string
+          format: date-time
+        cycleEndExclusiveUtc:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - open
+            - closed
+            - adjusted
+    PlanMetricStatus:
+      type: object
+      required:
+        - dimension
+        - includedQuantity
+        - currentQuantity
+        - overageQuantity
+        - limitBehavior
+        - state
+      properties:
+        dimension:
+          type: string
+          enum:
+            - active_members
+            - ai_activity_events
+            - estimated_cost
+        includedQuantity:
+          type: number
+        warningThresholdQuantity:
+          type: number
+          nullable: true
+        hardLimitQuantity:
+          type: number
+          nullable: true
+        currentQuantity:
+          type: number
+        remainingQuantity:
+          type: number
+          nullable: true
+        overageQuantity:
+          type: number
+        limitBehavior:
+          type: string
+          enum:
+            - warn_only
+            - restrict
+            - allow_overage
+        state:
+          type: string
+          enum:
+            - within_limit
+            - warning
+            - overage
+            - restricted
+    BillingCycleMetricSummary:
+      type: object
+      required:
+        - dimension
+        - includedQuantity
+        - currentQuantity
+        - overageQuantity
+        - state
+        - limitBehavior
+      properties:
+        dimension:
+          type: string
+          enum:
+            - active_members
+            - ai_activity_events
+            - estimated_cost
+        includedQuantity:
+          type: number
+        currentQuantity:
+          type: number
+        overageQuantity:
+          type: number
+        state:
+          type: string
+          enum:
+            - within_limit
+            - warning
+            - overage
+            - restricted
+        limitBehavior:
+          type: string
+          enum:
+            - warn_only
+            - restrict
+            - allow_overage
+    BillingCycleSummary:
+      type: object
+      required:
+        - cycleId
+        - cycleStartUtc
+        - cycleEndExclusiveUtc
+        - status
+        - planCode
+        - planDisplayName
+        - metrics
+        - warningEventCount
+        - restrictionEventCount
+        - adjustmentCount
+      properties:
+        cycleId:
+          type: string
+          format: uuid
+        cycleStartUtc:
+          type: string
+          format: date-time
+        cycleEndExclusiveUtc:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - open
+            - closed
+            - adjusted
+        planCode:
+          type: string
+        planDisplayName:
+          type: string
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillingCycleMetricSummary'
+        warningEventCount:
+          type: integer
+        restrictionEventCount:
+          type: integer
+        adjustmentCount:
+          type: integer
+    BillingCyclePage:
+      type: object
+      required:
+        - items
+        - pageNumber
+        - pageSize
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillingCycleSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    LimitEventSummary:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - dimension
+        - occurredAtUtc
+        - currentQuantity
+        - reason
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum:
+            - warning_raised
+            - overage_started
+            - restriction_applied
+            - state_returned_to_within_limit
+        dimension:
+          type: string
+          enum:
+            - active_members
+            - ai_activity_events
+            - estimated_cost
+        occurredAtUtc:
+          type: string
+          format: date-time
+        currentQuantity:
+          type: number
+        thresholdQuantity:
+          type: number
+          nullable: true
+        reason:
+          type: string
+    CycleAdjustmentSummary:
+      type: object
+      required:
+        - adjustmentId
+        - recordedAtUtc
+        - dimension
+        - deltaQuantity
+        - adjustmentType
+        - sourceReference
+        - reason
+      properties:
+        adjustmentId:
+          type: string
+          format: uuid
+        recordedAtUtc:
+          type: string
+          format: date-time
+        dimension:
+          type: string
+          enum:
+            - active_members
+            - ai_activity_events
+            - estimated_cost
+        deltaQuantity:
+          type: number
+        adjustmentType:
+          type: string
+          enum:
+            - late_activity
+            - source_correction
+            - reconciliation_repair
+        sourceReference:
+          type: string
+        reason:
+          type: string
+    PlanStatusResponse:
+      type: object
+      required:
+        - workspaceId
+        - plan
+        - currentCycle
+        - metrics
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        plan:
+          $ref: '#/components/schemas/PlanAssignmentSummary'
+        currentCycle:
+          $ref: '#/components/schemas/CurrentCycleSummary'
+        metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanMetricStatus'
+    BillingCycleListResponse:
+      type: object
+      required:
+        - workspaceId
+        - page
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        page:
+          $ref: '#/components/schemas/BillingCyclePage'
+    BillingCycleDetailResponse:
+      type: object
+      required:
+        - workspaceId
+        - cycle
+        - limitEvents
+        - adjustments
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        cycle:
+          $ref: '#/components/schemas/BillingCycleSummary'
+        limitEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimitEventSummary'
+        adjustments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CycleAdjustmentSummary'
+    ProblemDetails:
+      type: object
+      required:
+        - status
+        - title
+      properties:
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true

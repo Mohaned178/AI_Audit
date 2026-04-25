@@ -1,4 +1,6 @@
 @AIUsageGuard.Api_HostAddress = http://localhost:5172
+@riskFindingId = 00000000-0000-0000-0000-000000000000
+@notificationId = 00000000-0000-0000-0000-000000000000
 
 ### Register a workspace owner
 POST {{AIUsageGuard.Api_HostAddress}}/auth/register
@@ -26,6 +28,153 @@ Content-Type: application/json
 
 ### List AI usage events
 GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/events?pageNumber=1&pageSize=50
+Accept: application/json
+
+### Get workspace risk policy
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/risk-policy
+Accept: application/json
+
+### Update workspace risk policy
+PUT {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/risk-policy
+X-CSRF-TOKEN: token
+Content-Type: application/json
+
+{
+  "approvedTools": [
+    "ChatGPT"
+  ],
+  "perEventEstimatedCostThreshold": 1.00,
+  "dailyEstimatedCostThreshold": 10.00
+}
+
+### Submit a risky AI usage event
+POST {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/events
+Content-Type: application/json
+
+{
+  "idempotencyKey": "evt-risk-001",
+  "eventType": "prompt_submitted",
+  "occurredAt": "2026-04-21T12:05:00Z",
+  "toolName": "Claude",
+  "modelName": "claude-3-7-sonnet",
+  "promptPreview": "Send this report to owner@example.com",
+  "estimatedCost": 5.25
+}
+
+### List risk findings
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/risk-findings?pageNumber=1&pageSize=25
+Accept: application/json
+
+### List only sensitive-data findings
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/risk-findings?ruleType=sensitive_data_pattern&pageNumber=1&pageSize=25
+Accept: application/json
+
+### Get a specific risk finding
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/risk-findings/{{riskFindingId}}
+Accept: application/json
+
+### Reporting: get workspace dashboard
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/dashboard?fromDate=2026-04-01&toDate=2026-04-21
+Accept: application/json
+
+### Reporting: usage by user
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/reports/usage-by-user?fromDate=2026-04-01&toDate=2026-04-21&pageNumber=1&pageSize=20
+Accept: application/json
+
+### Reporting: usage by tool
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/reports/usage-by-tool?fromDate=2026-04-01&toDate=2026-04-21&pageNumber=1&pageSize=20
+Accept: application/json
+
+### Reporting: alerts summary
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/reports/alerts-summary?fromDate=2026-04-01&toDate=2026-04-21
+Accept: application/json
+
+### Reporting: cost summary
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/reports/cost-summary?fromDate=2026-04-01&toDate=2026-04-21
+Accept: application/json
+
+### Notifications: get workspace preferences
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/notification-preferences
+Accept: application/json
+
+### Notifications: update workspace preferences
+PUT {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/notification-preferences
+Content-Type: application/json
+
+{
+  "urgentAlertsEnabled": true,
+  "digestEnabled": true,
+  "digestCadence": "daily",
+  "recipientSelectionMode": "all_admins_and_owners",
+  "selectedRecipientUserIds": []
+}
+
+### Notifications: list workspace notifications
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/notifications?pageNumber=1&pageSize=20
+Accept: application/json
+
+### Notifications: get one notification
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/notifications/{{notificationId}}
+Accept: application/json
+
+### Audit Logs and Hardening: list workspace audit logs
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/audit-logs?pageNumber=1&pageSize=20
+Accept: application/json
+
+### Audit Logs and Hardening: list failed sign-in evidence
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/audit-logs?result=failed&securityRelevant=true&pageNumber=1&pageSize=20
+Accept: application/json
+
+### Audit Logs and Hardening: list denied protected-write evidence
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/audit-logs?result=denied&securityRelevant=true&pageNumber=1&pageSize=20
+Accept: application/json
+
+### Audit Logs and Hardening: get one audit log
+@auditLogId = 00000000-0000-0000-0000-000000000000
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/audit-logs/{{auditLogId}}
+Accept: application/json
+
+### Audit Logs and Hardening: sign in with hardening enabled
+POST {{AIUsageGuard.Api_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "Password123!"
+}
+
+### Audit Logs and Hardening: sign in with invalid credentials
+POST {{AIUsageGuard.Api_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "WrongPassword!"
+}
+
+### Audit Logs and Hardening: rejected protected write without integrity token
+PUT {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/risk-policy
+Content-Type: application/json
+
+{
+  "approvedTools": [
+    "ChatGPT"
+  ],
+  "perEventEstimatedCostThreshold": 1.00,
+  "dailyEstimatedCostThreshold": 10.00
+}
+
+### Billing: get current plan status
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/billing/plan-status
+Accept: application/json
+
+### Billing: list usage cycles
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/billing/cycles?pageNumber=1&pageSize=20
+Accept: application/json
+
+### Billing: get one usage cycle
+@billingCycleId = 00000000-0000-0000-0000-000000000000
+GET {{AIUsageGuard.Api_HostAddress}}/workspaces/{{workspaceId}}/billing/cycles/{{billingCycleId}}
 Accept: application/json
 
 ###

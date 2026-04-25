@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using AIUsageGuard.Api.Contracts.AIUsageEvents;
 using AIUsageGuard.Api.Policies;
+using AIUsageGuard.Api.Security;
 using AIUsageGuard.Application.AIUsageEvents.IngestEvent;
 using AIUsageGuard.Application.AIUsageEvents.ListEvents;
 using AIUsageGuard.Application.Models;
@@ -31,6 +32,7 @@ public sealed class AIUsageEventsController : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = WorkspacePolicies.WorkspaceMember)]
+    [RequireProtectedRequestIntegrity]
     public async Task<ActionResult<EventIngestionResponse>> Ingest(
         [FromRoute] Guid workspaceId,
         [FromBody] IngestAIUsageEventRequest request,

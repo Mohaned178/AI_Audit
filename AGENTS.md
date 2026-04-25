@@ -1,6 +1,6 @@
 # AI Guard Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-21
+Auto-generated from all feature plans. Last updated: 2026-04-25
 
 ## Active Technologies
 - C# 14 on .NET 10 LTS + ASP.NET Core 10 Web API, Microsoft.Extensions.Configuration, Microsoft.Extensions.Logging, Microsoft.Extensions.Options (001-constitution-rules)

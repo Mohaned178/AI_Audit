@@ -1,7 +1,5 @@
 using AIUsageGuard.Application.AIUsageEvents.IngestEvent;
-using AIUsageGuard.Application.Auditing;
 using AIUsageGuard.Application.Models;
-using AIUsageGuard.Infrastructure.Auditing;
 using AIUsageGuard.UnitTests.Infrastructure;
 
 namespace AIUsageGuard.UnitTests.AIUsageEvents;
@@ -23,7 +21,7 @@ public sealed class IngestAIUsageEventDeduplicationTests
         });
         await dbContext.SaveChangesAsync();
 
-        var service = new IngestAIUsageEventService(dbContext, new AuditService(dbContext));
+        var service = RiskDetectionTestFactory.CreateIngestService(dbContext);
 
         var first = await service.IngestAsync(new IngestAIUsageEventCommand(
             workspaceId,

@@ -49,6 +49,7 @@ public sealed class AIUsageEventConfiguration : IEntityTypeConfiguration<AIUsage
         builder.HasIndex(item => new { item.WorkspaceId, item.EventType, item.OccurredAt });
         builder.HasIndex(item => new { item.WorkspaceId, item.ActorUserId, item.OccurredAt });
         builder.HasIndex(item => new { item.WorkspaceId, item.ToolName, item.OccurredAt });
+        builder.HasIndex(item => new { item.WorkspaceId, item.OccurredAt, item.EstimatedCost });
 
     }
 }

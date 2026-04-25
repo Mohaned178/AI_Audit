@@ -18,5 +18,15 @@ public sealed class AuditRecord
 
     public string Reason { get; set; } = string.Empty;
 
+    public string Category { get; set; } = "governance";
+
+    public bool IsSecurityRelevant { get; set; }
+
+    public string? CorrelationId { get; set; }
+
+    public string? ClientIpAddressHash { get; set; }
+
+    public string? UserAgent { get; set; }
+
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -1,6 +1,20 @@
 <Project>
   <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory).artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory).artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+    <RestoreEnablePackagePruning>false</RestoreEnablePackagePruning>
     <WarningsAsErrors />
-    <NoWarn>$(NoWarn);NU1605;SYSLIB0011</NoWarn>
+    <NoWarn>$(NoWarn);NU1605;NU1900;SYSLIB0011</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CodexTempBuildRoot)' != ''">
+    <BaseIntermediateOutputPath>$(CodexTempBuildRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(CodexTempBuildRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CodexTempBuildRoot)' == '' and '$(CODEX_TEMP_BUILD_ROOT)' != ''">
+    <BaseIntermediateOutputPath>$(CODEX_TEMP_BUILD_ROOT)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(CODEX_TEMP_BUILD_ROOT)bin\$(MSBuildProjectName)\</BaseOutputPath>
   </PropertyGroup>
 </Project>

@@ -1,0 +1,105 @@
+using AIUsageGuard.Application.Abstractions;
+using AIUsageGuard.Application.BackgroundJobs.RunDigestGeneration;
+using AIUsageGuard.Application.Models;
+using AIUsageGuard.Application.Notifications;
+using AIUsageGuard.Infrastructure.Auditing;
+using AIUsageGuard.Infrastructure.Persistence;
+using AIUsageGuard.UnitTests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+namespace AIUsageGuard.UnitTests.BackgroundJobs;
+
+public sealed class RunDigestGenerationServiceTests
+{
+    [Fact]
+    public async Task Run_creates_daily_digest_once_per_completed_period()
+    {
+        await using var dbContext = TestDbContextFactory.CreateContext();
+        var setup = await SeedWorkspaceAsync(dbContext);
+        dbContext.NotificationPreferences.Add(new NotificationPreference
+        {
+            WorkspaceId = setup.WorkspaceId,
+            DigestEnabled = true,
+            DigestCadence = DigestCadence.Daily,
+            LastUpdatedByUserId = setup.UserId
+        });
+        var eventId = Guid.NewGuid();
+        dbContext.AIUsageEvents.Add(new AIUsageEvent
+        {
+            Id = eventId,
+            WorkspaceId = setup.WorkspaceId,
+            ActorUserId = setup.UserId,
+            EventType = AIUsageEventType.PromptSubmitted,
+            IdempotencyKey = "digest-evt-001",
+            ToolName = "ChatGPT",
+            OccurredAt = DateTimeOffset.UtcNow.AddDays(-1).AddHours(-1)
+        });
+        var outcomeId = Guid.NewGuid();
+        dbContext.RiskEvaluationOutcomes.Add(new RiskEvaluationOutcome
+        {
+            Id = outcomeId,
+            WorkspaceId = setup.WorkspaceId,
+            EventId = eventId,
+            AppliedRuleVersion = "v1",
+            MatchedRuleCount = 1,
+            EvaluationResult = RiskEvaluationResult.Matched
+        });
+        dbContext.RiskFindings.Add(new RiskFinding
+        {
+            WorkspaceId = setup.WorkspaceId,
+            EventId = eventId,
+            EvaluationOutcomeId = outcomeId,
+            ActorUserId = setup.UserId,
+            ToolName = "ChatGPT",
+            Severity = RiskSeverity.High,
+            Reason = "High-risk activity",
+            DetectedAt = DateTimeOffset.UtcNow.AddDays(-1).AddHours(-1)
+        });
+        await dbContext.SaveChangesAsync();
+
+        var service = new RunDigestGenerationService(
+            dbContext,
+            new AuditService(dbContext),
+            Options.Create(new DigestSchedulingOptions()),
+            NullLogger<RunDigestGenerationService>.Instance);
+
+        var first = await service.RunAsync(new RunDigestGenerationCommand(DateTimeOffset.UtcNow));
+        var second = await service.RunAsync(new RunDigestGenerationCommand(DateTimeOffset.UtcNow.AddMinutes(1)));
+
+        Assert.Equal(1, first.NotificationsCreated);
+        Assert.Equal(0, second.NotificationsCreated);
+        Assert.Equal(1, await dbContext.Notifications.CountAsync(item => item.NotificationType == NotificationType.Digest));
+    }
+
+    private static async Task<(Guid WorkspaceId, Guid UserId)> SeedWorkspaceAsync(ApplicationDbContext dbContext)
+    {
+        var workspaceId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await dbContext.AddUserAsync(new UserAccount
+        {
+            Id = userId,
+            Email = "owner@example.com",
+            DisplayName = "Owner",
+            PasswordHash = "hash",
+            Status = UserAccountStatus.Active
+        });
+        dbContext.Workspaces.Add(new Workspace
+        {
+            Id = workspaceId,
+            Name = "Alpha Workspace",
+            Slug = "alpha-workspace",
+            CreatedByUserId = userId
+        });
+        dbContext.WorkspaceMemberships.Add(new WorkspaceMembership
+        {
+            WorkspaceId = workspaceId,
+            UserId = userId,
+            Role = WorkspaceRole.Owner,
+            Status = MembershipStatus.Active
+        });
+        await dbContext.SaveChangesAsync();
+        return (workspaceId, userId);
+    }
+}

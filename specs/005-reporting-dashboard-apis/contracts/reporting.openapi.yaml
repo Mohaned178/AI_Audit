@@ -1,0 +1,556 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Reporting API
+  version: 0.1.0
+  description: >
+    Phase 4 HTTP contract for workspace-scoped dashboard and reporting
+    endpoints.
+servers:
+  - url: https://api.example.com
+paths:
+  /workspaces/{workspaceId}/dashboard:
+    get:
+      summary: Retrieve the workspace dashboard overview
+      operationId: getWorkspaceDashboard
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Dashboard overview for the requested workspace and period
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+              examples:
+                overview:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    period:
+                      fromDate: '2026-04-01'
+                      toDate: '2026-04-21'
+                      dayCount: 21
+                    totals:
+                      totalEvents: 320
+                      uniqueActorCount: 8
+                      uniqueToolCount: 3
+                      flaggedFindingCount: 14
+                    topUsers:
+                      items:
+                        - actorUserId: 55555555-5555-5555-5555-555555555555
+                          displayLabel: Owner User
+                          totalEvents: 120
+                          flaggedFindingCount: 5
+                          estimatedCost: 44.25
+                          eventsWithEstimatedCost: 100
+                          eventsMissingEstimatedCost: 20
+                          lastActivityAt: '2026-04-21T11:58:00Z'
+                      pageNumber: 1
+                      pageSize: 5
+                      totalCount: 8
+                    topTools:
+                      items:
+                        - displayLabel: ChatGPT
+                          totalEvents: 180
+                          flaggedFindingCount: 4
+                          estimatedCost: 32.10
+                          eventsWithEstimatedCost: 150
+                          eventsMissingEstimatedCost: 30
+                          lastActivityAt: '2026-04-21T11:58:00Z'
+                      pageNumber: 1
+                      pageSize: 5
+                      totalCount: 3
+                    alerts:
+                      totalFindings: 14
+                      highSeverityCount: 3
+                      mediumSeverityCount: 8
+                      lowSeverityCount: 3
+                      affectedActorCount: 4
+                      affectedToolCount: 2
+                      dailyTrend:
+                        - date: '2026-04-19'
+                          eventCount: 18
+                          findingCount: 2
+                          estimatedCost: 4.20
+                    costs:
+                      estimatedCostTotal: 77.50
+                      eventsWithEstimatedCost: 260
+                      eventsMissingEstimatedCost: 60
+                      isPartial: true
+                      dailyTrend:
+                        - date: '2026-04-19'
+                          eventCount: 18
+                          findingCount: 2
+                          estimatedCost: 4.20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/reports/usage-by-user:
+    get:
+      summary: Retrieve grouped usage totals by user
+      operationId: getUsageByUser
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged usage summary rows grouped by user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageSummaryResponse'
+              examples:
+                users:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    period:
+                      fromDate: '2026-04-01'
+                      toDate: '2026-04-21'
+                      dayCount: 21
+                    groupedBy: user
+                    page:
+                      items:
+                        - actorUserId: 55555555-5555-5555-5555-555555555555
+                          displayLabel: Owner User
+                          totalEvents: 120
+                          flaggedFindingCount: 5
+                          estimatedCost: 44.25
+                          eventsWithEstimatedCost: 100
+                          eventsMissingEstimatedCost: 20
+                          lastActivityAt: '2026-04-21T11:58:00Z'
+                      pageNumber: 1
+                      pageSize: 20
+                      totalCount: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/reports/usage-by-tool:
+    get:
+      summary: Retrieve grouped usage totals by tool
+      operationId: getUsageByTool
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged usage summary rows grouped by tool
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageSummaryResponse'
+              examples:
+                tools:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    period:
+                      fromDate: '2026-04-01'
+                      toDate: '2026-04-21'
+                      dayCount: 21
+                    groupedBy: tool
+                    page:
+                      items:
+                        - actorUserId: null
+                          displayLabel: ChatGPT
+                          totalEvents: 180
+                          flaggedFindingCount: 4
+                          estimatedCost: 32.10
+                          eventsWithEstimatedCost: 150
+                          eventsMissingEstimatedCost: 30
+                          lastActivityAt: '2026-04-21T11:58:00Z'
+                      pageNumber: 1
+                      pageSize: 20
+                      totalCount: 3
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/reports/alerts-summary:
+    get:
+      summary: Retrieve the workspace alerts summary
+      operationId: getAlertsSummary
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Alerts summary for the requested workspace and period
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsSummaryResponse'
+              examples:
+                alerts:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    period:
+                      fromDate: '2026-04-01'
+                      toDate: '2026-04-21'
+                      dayCount: 21
+                    summary:
+                      totalFindings: 14
+                      highSeverityCount: 3
+                      mediumSeverityCount: 8
+                      lowSeverityCount: 3
+                      affectedActorCount: 4
+                      affectedToolCount: 2
+                      dailyTrend:
+                        - date: '2026-04-19'
+                          eventCount: 18
+                          findingCount: 2
+                          estimatedCost: 4.20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/reports/cost-summary:
+    get:
+      summary: Retrieve the workspace estimated cost summary
+      operationId: getCostSummary
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Estimated cost summary for the requested workspace and period
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSummaryResponse'
+              examples:
+                costs:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    period:
+                      fromDate: '2026-04-01'
+                      toDate: '2026-04-21'
+                      dayCount: 21
+                    summary:
+                      estimatedCostTotal: 77.50
+                      eventsWithEstimatedCost: 260
+                      eventsMissingEstimatedCost: 60
+                      isPartial: true
+                      dailyTrend:
+                        - date: '2026-04-19'
+                          eventCount: 18
+                          findingCount: 2
+                          estimatedCost: 4.20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FromDate:
+      name: fromDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    ToDate:
+      name: toDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    PageNumber:
+      name: pageNumber
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Invalid reporting period or unsupported report request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidDateOrder:
+              value:
+                status: 400
+                title: Bad Request
+                detail: fromDate must be earlier than or equal to toDate.
+            unsupportedRange:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Reporting periods longer than 93 days are not supported.
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Caller is not authorized for the requested workspace reporting action
+  schemas:
+    ReportingPeriod:
+      type: object
+      required:
+        - fromDate
+        - toDate
+        - dayCount
+      properties:
+        fromDate:
+          type: string
+          format: date
+        toDate:
+          type: string
+          format: date
+        dayCount:
+          type: integer
+    DashboardTotals:
+      type: object
+      required:
+        - totalEvents
+        - uniqueActorCount
+        - uniqueToolCount
+        - flaggedFindingCount
+      properties:
+        totalEvents:
+          type: integer
+        uniqueActorCount:
+          type: integer
+        uniqueToolCount:
+          type: integer
+        flaggedFindingCount:
+          type: integer
+    DailyTrendPoint:
+      type: object
+      required:
+        - date
+        - eventCount
+        - findingCount
+        - estimatedCost
+      properties:
+        date:
+          type: string
+          format: date
+        eventCount:
+          type: integer
+        findingCount:
+          type: integer
+        estimatedCost:
+          type: number
+    UsageSummaryRow:
+      type: object
+      required:
+        - displayLabel
+        - totalEvents
+        - flaggedFindingCount
+        - estimatedCost
+        - eventsWithEstimatedCost
+        - eventsMissingEstimatedCost
+      properties:
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        displayLabel:
+          type: string
+        totalEvents:
+          type: integer
+        flaggedFindingCount:
+          type: integer
+        estimatedCost:
+          type: number
+        eventsWithEstimatedCost:
+          type: integer
+        eventsMissingEstimatedCost:
+          type: integer
+        lastActivityAt:
+          type: string
+          format: date-time
+          nullable: true
+    UsageSummaryPage:
+      type: object
+      required:
+        - items
+        - pageNumber
+        - pageSize
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageSummaryRow'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    AlertsSummary:
+      type: object
+      required:
+        - totalFindings
+        - highSeverityCount
+        - mediumSeverityCount
+        - lowSeverityCount
+        - affectedActorCount
+        - affectedToolCount
+        - dailyTrend
+      properties:
+        totalFindings:
+          type: integer
+        highSeverityCount:
+          type: integer
+        mediumSeverityCount:
+          type: integer
+        lowSeverityCount:
+          type: integer
+        affectedActorCount:
+          type: integer
+        affectedToolCount:
+          type: integer
+        dailyTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyTrendPoint'
+    CostSummary:
+      type: object
+      required:
+        - estimatedCostTotal
+        - eventsWithEstimatedCost
+        - eventsMissingEstimatedCost
+        - isPartial
+        - dailyTrend
+      properties:
+        estimatedCostTotal:
+          type: number
+        eventsWithEstimatedCost:
+          type: integer
+        eventsMissingEstimatedCost:
+          type: integer
+        isPartial:
+          type: boolean
+        dailyTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyTrendPoint'
+    DashboardResponse:
+      type: object
+      required:
+        - workspaceId
+        - period
+        - totals
+        - topUsers
+        - topTools
+        - alerts
+        - costs
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        totals:
+          $ref: '#/components/schemas/DashboardTotals'
+        topUsers:
+          $ref: '#/components/schemas/UsageSummaryPage'
+        topTools:
+          $ref: '#/components/schemas/UsageSummaryPage'
+        alerts:
+          $ref: '#/components/schemas/AlertsSummary'
+        costs:
+          $ref: '#/components/schemas/CostSummary'
+    UsageSummaryResponse:
+      type: object
+      required:
+        - workspaceId
+        - period
+        - groupedBy
+        - page
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        groupedBy:
+          type: string
+          enum:
+            - user
+            - tool
+        page:
+          $ref: '#/components/schemas/UsageSummaryPage'
+    AlertsSummaryResponse:
+      type: object
+      required:
+        - workspaceId
+        - period
+        - summary
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        summary:
+          $ref: '#/components/schemas/AlertsSummary'
+    CostSummaryResponse:
+      type: object
+      required:
+        - workspaceId
+        - period
+        - summary
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        summary:
+          $ref: '#/components/schemas/CostSummary'
+    ProblemDetails:
+      type: object
+      required:
+        - status
+        - title
+      properties:
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true

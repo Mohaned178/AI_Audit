@@ -1,0 +1,522 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Risk Detection API
+  version: 0.1.0
+  description: >
+    Phase 3 HTTP contract for workspace-scoped risk finding review and
+    workspace risk policy management.
+servers:
+  - url: https://api.example.com
+paths:
+  /workspaces/{workspaceId}/risk-findings:
+    get:
+      summary: Retrieve risk findings for a workspace
+      operationId: listRiskFindings
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/RuleType'
+        - $ref: '#/components/parameters/Severity'
+        - $ref: '#/components/parameters/FindingStatus'
+        - $ref: '#/components/parameters/ActorUserId'
+        - $ref: '#/components/parameters/ToolName'
+        - $ref: '#/components/parameters/FromDetectedAt'
+        - $ref: '#/components/parameters/ToDetectedAt'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged risk findings for the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskFindingListResponse'
+              examples:
+                matchedFindings:
+                  value:
+                    items:
+                      - id: 11111111-1111-1111-1111-111111111111
+                        workspaceId: 22222222-2222-2222-2222-222222222222
+                        eventId: 33333333-3333-3333-3333-333333333333
+                        evaluationOutcomeId: 44444444-4444-4444-4444-444444444444
+                        ruleType: sensitive_data_pattern
+                        severity: high
+                        status: open
+                        reason: Prompt or metadata contains an email address.
+                        evidencePreview: owner@example.com
+                        actorUserId: 55555555-5555-5555-5555-555555555555
+                        toolName: Claude
+                        detectedAt: '2026-04-21T12:05:02Z'
+                    pageNumber: 1
+                    pageSize: 25
+                    totalCount: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/risk-findings/{findingId}:
+    get:
+      summary: Retrieve a single risk finding
+      operationId: getRiskFinding
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FindingId'
+      responses:
+        '200':
+          description: Risk finding detail for the requested workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskFindingDetailResponse'
+              examples:
+                findingDetail:
+                  value:
+                    id: 11111111-1111-1111-1111-111111111111
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    eventId: 33333333-3333-3333-3333-333333333333
+                    evaluationOutcomeId: 44444444-4444-4444-4444-444444444444
+                    ruleType: sensitive_data_pattern
+                    severity: high
+                    status: open
+                    reason: Prompt or metadata contains an email address.
+                    evidencePreview: owner@example.com
+                    actorUserId: 55555555-5555-5555-5555-555555555555
+                    toolName: Claude
+                    detectedAt: '2026-04-21T12:05:02Z'
+                    appliedRuleVersion: built-in-v1
+                    evaluationResult: matched
+                    matchedRuleCount: 3
+                    evidenceSummary: SensitiveDataPattern:Prompt or metadata contains an email address.
+                    event:
+                      eventId: 33333333-3333-3333-3333-333333333333
+                      eventType: prompt_submitted
+                      actorUserId: 55555555-5555-5555-5555-555555555555
+                      toolName: Claude
+                      modelName: claude-3-7-sonnet
+                      sourceLabel: null
+                      promptPreview: Send this report to owner@example.com
+                      fileName: null
+                      fileSizeBytes: null
+                      estimatedCost: 5.25
+                      occurredAt: '2026-04-21T12:05:00Z'
+                      receivedAt: '2026-04-21T12:05:01Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /workspaces/{workspaceId}/risk-policy:
+    get:
+      summary: Retrieve the workspace risk policy inputs
+      operationId: getWorkspaceRiskPolicy
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Workspace risk policy values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceRiskPolicyResponse'
+              examples:
+                existingPolicy:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    approvedTools:
+                      - ChatGPT
+                    perEventEstimatedCostThreshold: 1
+                    dailyEstimatedCostThreshold: 10
+                    createdAt: '2026-04-21T12:00:00Z'
+                    lastUpdatedAt: '2026-04-21T12:00:00Z'
+                    lastUpdatedByUserId: 55555555-5555-5555-5555-555555555555
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      summary: Replace the workspace risk policy inputs
+      operationId: updateWorkspaceRiskPolicy
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkspaceRiskPolicyRequest'
+      responses:
+        '200':
+          description: Updated workspace risk policy values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceRiskPolicyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FindingId:
+      name: findingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RuleType:
+      name: ruleType
+      in: query
+      schema:
+        $ref: '#/components/schemas/RiskRuleType'
+    Severity:
+      name: severity
+      in: query
+      schema:
+        $ref: '#/components/schemas/RiskSeverity'
+    FindingStatus:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/RiskFindingStatus'
+    ActorUserId:
+      name: actorUserId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    ToolName:
+      name: toolName
+      in: query
+      schema:
+        type: string
+    FromDetectedAt:
+      name: fromDetectedAt
+      in: query
+      schema:
+        type: string
+        format: date-time
+    ToDetectedAt:
+      name: toDetectedAt
+      in: query
+      schema:
+        type: string
+        format: date-time
+    PageNumber:
+      name: pageNumber
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+  responses:
+    BadRequest:
+      description: Invalid filter or policy payload
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidThreshold:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Threshold values must be non-negative.
+            invalidRuleType:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Risk rule type is not supported.
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Caller is not authorized for the requested workspace action
+    NotFound:
+      description: Requested finding does not exist in the workspace
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            findingMissing:
+              value:
+                status: 404
+                title: Not Found
+                detail: Risk finding not found.
+  schemas:
+    RiskRuleType:
+      type: string
+      enum:
+        - sensitive_data_pattern
+        - file_upload
+        - unapproved_tool
+        - cost_threshold_exceeded
+    RiskSeverity:
+      type: string
+      enum:
+        - low
+        - medium
+        - high
+    RiskFindingStatus:
+      type: string
+      enum:
+        - open
+    RiskEvaluationResult:
+      type: string
+      enum:
+        - no_match
+        - matched
+        - skipped
+    UpdateWorkspaceRiskPolicyRequest:
+      type: object
+      properties:
+        approvedTools:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+        perEventEstimatedCostThreshold:
+          type: number
+          minimum: 0
+          nullable: true
+        dailyEstimatedCostThreshold:
+          type: number
+          minimum: 0
+          nullable: true
+    WorkspaceRiskPolicyResponse:
+      type: object
+      required:
+        - workspaceId
+        - approvedTools
+        - createdAt
+        - lastUpdatedAt
+        - lastUpdatedByUserId
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        approvedTools:
+          type: array
+          items:
+            type: string
+        perEventEstimatedCostThreshold:
+          type: number
+          nullable: true
+        dailyEstimatedCostThreshold:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        lastUpdatedByUserId:
+          type: string
+          format: uuid
+    RiskFindingListResponse:
+      type: object
+      required:
+        - items
+        - pageNumber
+        - pageSize
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiskFindingListItem'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    RiskFindingListItem:
+      type: object
+      required:
+        - id
+        - workspaceId
+        - eventId
+        - evaluationOutcomeId
+        - ruleType
+        - severity
+        - status
+        - reason
+        - actorUserId
+        - toolName
+        - detectedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        evaluationOutcomeId:
+          type: string
+          format: uuid
+        ruleType:
+          $ref: '#/components/schemas/RiskRuleType'
+        severity:
+          $ref: '#/components/schemas/RiskSeverity'
+        status:
+          $ref: '#/components/schemas/RiskFindingStatus'
+        reason:
+          type: string
+        evidencePreview:
+          type: string
+          nullable: true
+        actorUserId:
+          type: string
+          format: uuid
+        toolName:
+          type: string
+        detectedAt:
+          type: string
+          format: date-time
+    RiskFindingDetailResponse:
+      type: object
+      required:
+        - id
+        - workspaceId
+        - eventId
+        - evaluationOutcomeId
+        - ruleType
+        - severity
+        - status
+        - reason
+        - actorUserId
+        - toolName
+        - detectedAt
+        - appliedRuleVersion
+        - evaluationResult
+        - matchedRuleCount
+        - event
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        evaluationOutcomeId:
+          type: string
+          format: uuid
+        ruleType:
+          $ref: '#/components/schemas/RiskRuleType'
+        severity:
+          $ref: '#/components/schemas/RiskSeverity'
+        status:
+          $ref: '#/components/schemas/RiskFindingStatus'
+        reason:
+          type: string
+        evidencePreview:
+          type: string
+          nullable: true
+        actorUserId:
+          type: string
+          format: uuid
+        toolName:
+          type: string
+        detectedAt:
+          type: string
+          format: date-time
+        appliedRuleVersion:
+          type: string
+        evaluationResult:
+          $ref: '#/components/schemas/RiskEvaluationResult'
+        matchedRuleCount:
+          type: integer
+        evidenceSummary:
+          type: string
+          nullable: true
+        event:
+          $ref: '#/components/schemas/RiskFindingEventContextResponse'
+    RiskFindingEventContextResponse:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - actorUserId
+        - toolName
+        - occurredAt
+        - receivedAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        actorUserId:
+          type: string
+          format: uuid
+        toolName:
+          type: string
+        modelName:
+          type: string
+          nullable: true
+        sourceLabel:
+          type: string
+          nullable: true
+        promptPreview:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+          nullable: true
+        fileSizeBytes:
+          type: integer
+          nullable: true
+        estimatedCost:
+          type: number
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+    ProblemDetails:
+      type: object
+      required:
+        - status
+        - title
+      properties:
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true

@@ -1,0 +1,106 @@
+using System.Diagnostics.Metrics;
+using AIUsageGuard.Application.Abstractions;
+using AIUsageGuard.Application.Auditing;
+using AIUsageGuard.Application.Errors;
+using AIUsageGuard.Application.Models;
+using AIUsageGuard.Application.Reporting;
+using Microsoft.Extensions.Logging;
+
+namespace AIUsageGuard.Application.Reporting.GetCostSummary;
+
+public sealed class GetCostSummaryService
+{
+    private static readonly Meter ReportingMeter = new("AIUsageGuard.Reporting");
+    private static readonly Counter<long> SuccessCounter = ReportingMeter.CreateCounter<long>("ai_usage_guard.reporting.cost_summary_reads");
+    private static readonly Counter<long> EmptyCounter = ReportingMeter.CreateCounter<long>("ai_usage_guard.reporting.cost_summary_empty_results");
+    private static readonly Counter<long> InvalidPeriodCounter = ReportingMeter.CreateCounter<long>("ai_usage_guard.reporting.cost_summary_invalid_requests");
+    private readonly IPlatformStore _store;
+    private readonly IAuditService _auditService;
+    private readonly ILogger<GetCostSummaryService> _logger;
+
+    public GetCostSummaryService(
+        IPlatformStore store,
+        IAuditService auditService,
+        ILogger<GetCostSummaryService> logger)
+    {
+        _store = store;
+        _auditService = auditService;
+        _logger = logger;
+    }
+
+    public async Task<GetCostSummaryResult> GetAsync(GetCostSummaryQuery query, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            Validate(query);
+
+            var period = ReportingPeriodValidator.ValidateAndNormalize(query.Period);
+            var summary = await _store.GetEstimatedCostSummaryAsync(query.WorkspaceId, period, cancellationToken);
+
+            SuccessCounter.Add(1, new KeyValuePair<string, object?>("workspace.id", query.WorkspaceId));
+            if (summary.EstimatedCostTotal == 0m && summary.EventsWithEstimatedCost == 0 && summary.EventsMissingEstimatedCost == 0)
+            {
+                EmptyCounter.Add(1, new KeyValuePair<string, object?>("workspace.id", query.WorkspaceId));
+            }
+
+            _logger.LogInformation(
+                "Retrieved cost summary for workspace {WorkspaceId} from {FromDate} to {ToDate} with total {EstimatedCostTotal} and partial cost {IsPartial}.",
+                query.WorkspaceId,
+                period.FromDate,
+                period.ToDate,
+                summary.EstimatedCostTotal,
+                summary.IsPartial);
+
+            await RecordAuditAsync(query, "success", "Cost summary retrieved.", cancellationToken);
+            return new GetCostSummaryResult(query.WorkspaceId, period, summary);
+        }
+        catch (RequestFailureException exception)
+        {
+            if (exception.StatusCode == 400)
+            {
+                InvalidPeriodCounter.Add(1, new KeyValuePair<string, object?>("workspace.id", query.WorkspaceId));
+            }
+
+            _logger.LogWarning(
+                exception,
+                "Cost summary request failed for workspace {WorkspaceId} from {FromDate} to {ToDate}.",
+                query.WorkspaceId,
+                query.Period.FromDate,
+                query.Period.ToDate);
+
+            await RecordAuditAsync(query, "failed", exception.Message, cancellationToken);
+            throw;
+        }
+    }
+
+    private async Task RecordAuditAsync(
+        GetCostSummaryQuery query,
+        string result,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        await _auditService.RecordAsync(new AuditRecord
+        {
+            WorkspaceId = query.WorkspaceId,
+            ActorUserId = query.RequestedByUserId,
+            ActionType = "report.cost_summary.read",
+            TargetType = "cost_summary",
+            TargetId = query.WorkspaceId.ToString(),
+            Result = result,
+            Reason = reason
+        }, cancellationToken);
+    }
+
+    private static void Validate(GetCostSummaryQuery query)
+    {
+        if (query.WorkspaceId == Guid.Empty)
+        {
+            throw new RequestFailureException(400, "Workspace is required.");
+        }
+
+        if (query.RequestedByUserId == Guid.Empty)
+        {
+            throw new RequestFailureException(400, "Requesting user is required.");
+        }
+    }
+}

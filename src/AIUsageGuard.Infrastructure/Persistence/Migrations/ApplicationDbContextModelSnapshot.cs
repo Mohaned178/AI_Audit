@@ -98,6 +98,8 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("WorkspaceId", "EventType", "OccurredAt");
 
+                    b.HasIndex("WorkspaceId", "OccurredAt", "EstimatedCost");
+
                     b.HasIndex("WorkspaceId", "ToolName", "OccurredAt");
 
                     b.ToTable("ai_usage_events", (string)null);
@@ -116,6 +118,22 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ClientIpAddressHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<bool>("IsSecurityRelevant")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
@@ -138,6 +156,10 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<Guid?>("WorkspaceId")
                         .HasColumnType("uuid");
 
@@ -145,11 +167,629 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ActorUserId");
 
-                    b.HasIndex("OccurredAt");
+                    b.HasIndex("WorkspaceId", "OccurredAt");
 
-                    b.HasIndex("WorkspaceId");
+                    b.HasIndex("WorkspaceId", "ActionType", "OccurredAt");
+
+                    b.HasIndex("WorkspaceId", "ActorUserId", "OccurredAt");
+
+                    b.HasIndex("WorkspaceId", "IsSecurityRelevant", "OccurredAt");
+
+                    b.HasIndex("WorkspaceId", "Result", "OccurredAt");
 
                     b.ToTable("audit_records", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.BackgroundJobRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FailureSummary")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("JobType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("ProcessedItemCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("ScheduledForUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobType", "ScheduledForUtc");
+
+                    b.HasIndex("WorkspaceId", "JobType", "StartedAtUtc");
+
+                    b.ToTable("background_job_runs", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.CycleAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdjustmentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid?>("AppliedByJobRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("DeltaQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Dimension")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("RecordedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SourceReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UsageCycleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppliedByJobRunId");
+
+                    b.HasIndex("UsageCycleId", "RecordedAtUtc");
+
+                    b.ToTable("cycle_adjustments", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.LimitEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CurrentQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Dimension")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal?>("ThresholdQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("TriggeredBySourceId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TriggeredBySourceType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UsageCycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsageCycleId");
+
+                    b.HasIndex("WorkspaceId", "UsageCycleId", "Dimension", "OccurredAtUtc");
+
+                    b.HasIndex("WorkspaceId", "UsageCycleId", "Dimension", "EventType", "TriggeredBySourceType", "TriggeredBySourceId");
+
+                    b.ToTable("limit_events", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.NotificationDeliveryOutcome", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DeliveryStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("FinalReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("LastAttemptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RecipientAddress")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryStatus", "NextAttemptAtUtc");
+
+                    b.HasIndex("NotificationId", "DeliveryStatus");
+
+                    b.HasIndex("NotificationId", "RecipientUserId")
+                        .IsUnique();
+
+                    b.ToTable("notification_delivery_outcomes", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.NotificationMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset?>("CoveredPeriodEndUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("CoveredPeriodStartUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByJobRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NotificationType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Severity")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("SummaryBody")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("TriggerFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId", "CreatedAtUtc");
+
+                    b.HasIndex("WorkspaceId", "NotificationType", "CreatedAtUtc");
+
+                    b.HasIndex("WorkspaceId", "NotificationType", "TriggerFingerprint")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "Status", "CreatedAtUtc");
+
+                    b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DigestCadence")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<bool>("DigestEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LastUpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RecipientSelectionMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("SelectedRecipientUserIds")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("UrgentAlertsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId")
+                        .IsUnique();
+
+                    b.ToTable("notification_preferences", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.PlanDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PlanCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("RetiredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanCode")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "IsDefault");
+
+                    b.ToTable("plan_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.PlanLimitRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Dimension")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal?>("HardLimitQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("IncludedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("LimitBehavior")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("PlanDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("WarningThresholdQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanDefinitionId", "Dimension")
+                        .IsUnique();
+
+                    b.ToTable("plan_limit_rules", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.RiskEvaluationOutcome", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppliedRuleVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("EvaluatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EvaluationResult")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EvidenceSummary")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("MatchedRuleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SkippedReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "EvaluatedAt");
+
+                    b.ToTable("risk_evaluation_outcomes", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.RiskFinding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DetectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EvaluationOutcomeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EvidencePreview")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RuleType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvaluationOutcomeId");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("WorkspaceId", "DetectedAt");
+
+                    b.HasIndex("WorkspaceId", "ActorUserId", "DetectedAt");
+
+                    b.HasIndex("WorkspaceId", "EventId", "RuleType")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "RuleType", "DetectedAt");
+
+                    b.HasIndex("WorkspaceId", "Severity", "DetectedAt");
+
+                    b.HasIndex("WorkspaceId", "ToolName", "DetectedAt");
+
+                    b.ToTable("risk_findings", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.UsageCycle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AdjustmentCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CycleEndExclusiveUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CycleStartUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastCalculatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OpenedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlanAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanAssignmentId");
+
+                    b.HasIndex("WorkspaceId", "CycleStartUtc")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "Status", "CycleStartUtc");
+
+                    b.ToTable("usage_cycles", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.UsageCycleMetric", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CurrentQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Dimension")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal?>("HardLimitQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("IncludedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTimeOffset?>("LastTransitionAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LimitBehavior")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("OverageQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("UsageCycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("WarningThresholdQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsageCycleId", "Dimension")
+                        .IsUnique();
+
+                    b.ToTable("usage_cycle_metrics", (string)null);
                 });
 
             modelBuilder.Entity("AIUsageGuard.Application.Models.Workspace", b =>
@@ -222,6 +862,83 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
                     b.ToTable("workspace_memberships", (string)null);
                 });
 
+            modelBuilder.Entity("AIUsageGuard.Application.Models.WorkspacePlanAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChangeReason")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("EffectiveFromCycleStartUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("EffectiveToCycleStartUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlanDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanDefinitionId");
+
+                    b.HasIndex("WorkspaceId", "EffectiveFromCycleStartUtc");
+
+                    b.HasIndex("WorkspaceId", "EffectiveToCycleStartUtc");
+
+                    b.ToTable("workspace_plan_assignments", (string)null);
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.WorkspaceRiskPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApprovedTools")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("DailyEstimatedCostThreshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTimeOffset>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LastUpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("PerEventEstimatedCostThreshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId")
+                        .IsUnique();
+
+                    b.ToTable("workspace_risk_policies", (string)null);
+                });
+
             modelBuilder.Entity("AIUsageGuard.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -250,7 +967,18 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("FailedSignInCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTimeOffset?>("LastFailedSignInAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset?>("LastSignInAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LockedUntilUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("LockoutEnabled")
@@ -292,6 +1020,8 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LockedUntilUtc");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -433,7 +1163,138 @@ namespace AIUsageGuard.Infrastructure.Persistence.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("AIUsageGuard.Application.Models.CycleAdjustment", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.BackgroundJobRun", null)
+                        .WithMany()
+                        .HasForeignKey("AppliedByJobRunId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AIUsageGuard.Application.Models.UsageCycle", null)
+                        .WithMany()
+                        .HasForeignKey("UsageCycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.LimitEvent", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.UsageCycle", null)
+                        .WithMany()
+                        .HasForeignKey("UsageCycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.NotificationDeliveryOutcome", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.NotificationMessage", null)
+                        .WithMany()
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.PlanLimitRule", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.PlanDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("PlanDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.RiskEvaluationOutcome", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.AIUsageEvent", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.RiskFinding", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.RiskEvaluationOutcome", null)
+                        .WithMany()
+                        .HasForeignKey("EvaluationOutcomeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIUsageGuard.Application.Models.AIUsageEvent", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.UsageCycle", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.WorkspacePlanAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("PlanAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.UsageCycleMetric", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.UsageCycle", null)
+                        .WithMany()
+                        .HasForeignKey("UsageCycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AIUsageGuard.Application.Models.WorkspaceMembership", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.WorkspacePlanAssignment", b =>
+                {
+                    b.HasOne("AIUsageGuard.Application.Models.PlanDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("PlanDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AIUsageGuard.Application.Models.WorkspaceRiskPolicy", b =>
                 {
                     b.HasOne("AIUsageGuard.Application.Models.Workspace", null)
                         .WithMany()

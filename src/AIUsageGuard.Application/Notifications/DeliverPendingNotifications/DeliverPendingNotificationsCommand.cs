@@ -1,0 +1,3 @@
+namespace AIUsageGuard.Application.Notifications.DeliverPendingNotifications;
+
+public sealed record DeliverPendingNotificationsCommand(DateTimeOffset ScheduledForUtc);

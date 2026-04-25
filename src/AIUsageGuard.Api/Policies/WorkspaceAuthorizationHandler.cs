@@ -96,24 +96,111 @@ public sealed class WorkspaceAuthorizationHandler : AuthorizationHandler<IAuthor
         CancellationToken cancellationToken)
     {
         var userId = GetUserId(principal);
+        var httpContext = _httpContextAccessor.HttpContext;
+        var actionType = ResolveActionType(requirement, httpContext);
+        var targetType = ResolveTargetType(requirement, httpContext);
         await _auditService.RecordAsync(new Application.Models.AuditRecord
         {
             WorkspaceId = workspaceId,
             ActorUserId = userId,
-            ActionType = requirement switch
-            {
-                WorkspaceRoleRequirement => "ai_usage_event.history.read",
-                WorkspaceMemberRequirement => "ai_usage_event.ingest",
-                _ => "authorization.denied"
-            },
-            TargetType = requirement switch
-            {
-                WorkspaceRoleRequirement => "event_history",
-                WorkspaceMemberRequirement => "ai_usage_event",
-                _ => "authorization"
-            },
+            ActionType = actionType,
+            TargetType = targetType,
             Result = "denied",
             Reason = reason
         }, cancellationToken);
+    }
+
+    private static string ResolveActionType(IAuthorizationRequirement requirement, HttpContext? httpContext)
+    {
+        if (requirement is WorkspaceMemberRequirement)
+        {
+            return "ai_usage_event.ingest";
+        }
+
+        if (httpContext is null)
+        {
+            return "authorization.denied";
+        }
+
+        return httpContext.Request.Path.Value?.Contains("/risk-policy", StringComparison.OrdinalIgnoreCase) == true
+            ? string.Equals(httpContext.Request.Method, HttpMethods.Put, StringComparison.OrdinalIgnoreCase)
+                ? "risk_policy.update"
+                : "risk_policy.read"
+            : httpContext.Request.Path.Value?.Contains("/audit-logs/", StringComparison.OrdinalIgnoreCase) == true
+                ? "audit_log.read"
+            : httpContext.Request.Path.Value?.Contains("/audit-logs", StringComparison.OrdinalIgnoreCase) == true
+                ? "audit_log.list"
+            : httpContext.Request.Path.Value?.Contains("/billing/plan-status", StringComparison.OrdinalIgnoreCase) == true
+                ? "billing.plan_status.read"
+            : httpContext.Request.Path.Value?.Contains("/billing/cycles/", StringComparison.OrdinalIgnoreCase) == true
+                ? "billing.cycle.read"
+            : httpContext.Request.Path.Value?.Contains("/billing/cycles", StringComparison.OrdinalIgnoreCase) == true
+                ? "billing.cycle_history.read"
+            : httpContext.Request.Path.Value?.Contains("/notification-preferences", StringComparison.OrdinalIgnoreCase) == true
+                ? string.Equals(httpContext.Request.Method, HttpMethods.Put, StringComparison.OrdinalIgnoreCase)
+                    ? "notification_preference.update"
+                    : "notification_preference.read"
+            : httpContext.Request.Path.Value?.Contains("/notifications", StringComparison.OrdinalIgnoreCase) == true
+                ? "notification.read"
+            : httpContext.Request.Path.Value?.Contains("/dashboard", StringComparison.OrdinalIgnoreCase) == true
+                ? "dashboard.read"
+            : httpContext.Request.Path.Value?.Contains("/reports/usage-by-user", StringComparison.OrdinalIgnoreCase) == true
+                ? "report.usage_by_user.read"
+            : httpContext.Request.Path.Value?.Contains("/reports/usage-by-tool", StringComparison.OrdinalIgnoreCase) == true
+                ? "report.usage_by_tool.read"
+            : httpContext.Request.Path.Value?.Contains("/reports/alerts-summary", StringComparison.OrdinalIgnoreCase) == true
+                ? "report.alerts_summary.read"
+            : httpContext.Request.Path.Value?.Contains("/reports/cost-summary", StringComparison.OrdinalIgnoreCase) == true
+                ? "report.cost_summary.read"
+            : httpContext.Request.Path.Value?.Contains("/risk-findings", StringComparison.OrdinalIgnoreCase) == true
+                ? "risk_finding.read"
+                : httpContext.Request.Path.Value?.Contains("/events", StringComparison.OrdinalIgnoreCase) == true
+                    ? "ai_usage_event.history.read"
+                    : "authorization.denied";
+    }
+
+    private static string ResolveTargetType(IAuthorizationRequirement requirement, HttpContext? httpContext)
+    {
+        if (requirement is WorkspaceMemberRequirement)
+        {
+            return "ai_usage_event";
+        }
+
+        if (httpContext is null)
+        {
+            return "authorization";
+        }
+
+        return httpContext.Request.Path.Value?.Contains("/risk-policy", StringComparison.OrdinalIgnoreCase) == true
+            ? "risk_policy"
+            : httpContext.Request.Path.Value?.Contains("/audit-logs/", StringComparison.OrdinalIgnoreCase) == true
+                ? "audit_log"
+            : httpContext.Request.Path.Value?.Contains("/audit-logs", StringComparison.OrdinalIgnoreCase) == true
+                ? "audit_log_history"
+            : httpContext.Request.Path.Value?.Contains("/billing/plan-status", StringComparison.OrdinalIgnoreCase) == true
+                ? "plan_status"
+            : httpContext.Request.Path.Value?.Contains("/billing/cycles/", StringComparison.OrdinalIgnoreCase) == true
+                ? "billing_cycle"
+            : httpContext.Request.Path.Value?.Contains("/billing/cycles", StringComparison.OrdinalIgnoreCase) == true
+                ? "billing_cycle_history"
+            : httpContext.Request.Path.Value?.Contains("/notification-preferences", StringComparison.OrdinalIgnoreCase) == true
+                ? "notification_preference"
+            : httpContext.Request.Path.Value?.Contains("/notifications", StringComparison.OrdinalIgnoreCase) == true
+                ? "notification"
+            : httpContext.Request.Path.Value?.Contains("/dashboard", StringComparison.OrdinalIgnoreCase) == true
+                ? "dashboard"
+            : httpContext.Request.Path.Value?.Contains("/reports/usage-by-user", StringComparison.OrdinalIgnoreCase) == true
+                ? "usage_summary"
+            : httpContext.Request.Path.Value?.Contains("/reports/usage-by-tool", StringComparison.OrdinalIgnoreCase) == true
+                ? "usage_summary"
+            : httpContext.Request.Path.Value?.Contains("/reports/alerts-summary", StringComparison.OrdinalIgnoreCase) == true
+                ? "alerts_summary"
+            : httpContext.Request.Path.Value?.Contains("/reports/cost-summary", StringComparison.OrdinalIgnoreCase) == true
+                ? "cost_summary"
+            : httpContext.Request.Path.Value?.Contains("/risk-findings", StringComparison.OrdinalIgnoreCase) == true
+                ? "risk_finding"
+                : httpContext.Request.Path.Value?.Contains("/events", StringComparison.OrdinalIgnoreCase) == true
+                    ? "event_history"
+                    : "authorization";
     }
 }
