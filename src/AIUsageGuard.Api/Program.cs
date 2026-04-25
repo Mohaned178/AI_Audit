@@ -103,8 +103,12 @@ if (builder.Environment.IsDevelopment())
         options.OperationFilter<ProtectedRequestIntegrityOperationFilter>();
     });
 }
-var databaseProvider = builder.Configuration["Database:Provider"] ?? "Postgres";
+var databaseProvider =
+    builder.Configuration["Database:Provider"] ??
+    builder.Configuration["DATABASE_PROVIDER"] ??
+    "Postgres";
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? builder.Configuration["DEFAULT_CONNECTION"]
     ?? throw new InvalidOperationException("DefaultConnection is not configured.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
