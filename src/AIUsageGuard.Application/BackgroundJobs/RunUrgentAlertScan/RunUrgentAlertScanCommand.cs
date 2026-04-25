@@ -1,0 +1,3 @@
+namespace AIUsageGuard.Application.BackgroundJobs.RunUrgentAlertScan;
+
+public sealed record RunUrgentAlertScanCommand(DateTimeOffset ScheduledForUtc);

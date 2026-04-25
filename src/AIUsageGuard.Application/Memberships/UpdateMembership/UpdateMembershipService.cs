@@ -1,5 +1,7 @@
 using AIUsageGuard.Application.Abstractions;
 using AIUsageGuard.Application.Auditing;
+using AIUsageGuard.Application.Billing;
+using AIUsageGuard.Application.Billing.ApplyWorkspacePlanAssignment;
 using AIUsageGuard.Application.Errors;
 using AIUsageGuard.Application.Models;
 
@@ -9,11 +11,19 @@ public sealed class UpdateMembershipService
 {
     private readonly IPlatformStore _store;
     private readonly IAuditService _auditService;
+    private readonly ApplyWorkspacePlanAssignmentService _planAssignmentService;
+    private readonly BillingLimitEvaluator _limitEvaluator;
 
-    public UpdateMembershipService(IPlatformStore store, IAuditService auditService)
+    public UpdateMembershipService(
+        IPlatformStore store,
+        IAuditService auditService,
+        ApplyWorkspacePlanAssignmentService planAssignmentService,
+        BillingLimitEvaluator limitEvaluator)
     {
         _store = store;
         _auditService = auditService;
+        _planAssignmentService = planAssignmentService;
+        _limitEvaluator = limitEvaluator;
     }
 
     public async Task<WorkspaceMembership> UpdateAsync(
@@ -55,10 +65,36 @@ public sealed class UpdateMembershipService
         var nextStatus = status ?? membership.Status;
         var nextActiveOwner = nextRole == WorkspaceRole.Owner && nextStatus == MembershipStatus.Active;
         var ownerCount = await _store.CountOwnerMembershipsAsync(workspaceId, cancellationToken);
+        var activeMembershipCount = await _store.CountActiveMembershipsAsync(workspaceId, cancellationToken);
+        var isCurrentlyActive = membership.Status == MembershipStatus.Active;
+        var willBeActive = nextStatus == MembershipStatus.Active;
+        var projectedActiveMembershipCount = activeMembershipCount + (willBeActive && !isCurrentlyActive ? 1 : 0) - (!willBeActive && isCurrentlyActive ? 1 : 0);
 
         if (currentActiveOwner && !nextActiveOwner && ownerCount <= 1)
         {
             throw new RequestFailureException(409, "A workspace must keep at least one owner.");
+        }
+
+        UsageCycleMetric? activeMemberMetric = null;
+        if (projectedActiveMembershipCount != activeMembershipCount)
+        {
+            var currentCycle = await _planAssignmentService.EnsureCurrentCycleAsync(workspaceId, actorUserId, DateTimeOffset.UtcNow, cancellationToken);
+            activeMemberMetric = await _store.FindUsageCycleMetricAsync(currentCycle.Id, BillingDimension.ActiveMembers, cancellationToken)
+                ?? throw new RequestFailureException(409, "Active-member billing state is not configured for the workspace.");
+
+            if (projectedActiveMembershipCount > activeMembershipCount &&
+                _limitEvaluator.WouldExceedHardLimit(activeMemberMetric, projectedActiveMembershipCount))
+            {
+                await _limitEvaluator.RecordDeniedActionAsync(
+                    workspaceId,
+                    actorUserId,
+                    BillingDimension.ActiveMembers,
+                    projectedActiveMembershipCount,
+                    activeMemberMetric.HardLimitQuantity ?? activeMemberMetric.IncludedQuantity,
+                    "membership.update",
+                    cancellationToken);
+                throw new RequestFailureException(409, "Updating this membership would exceed the workspace active-member limit for the current plan.");
+            }
         }
 
         if (role.HasValue)
@@ -85,6 +121,17 @@ public sealed class UpdateMembershipService
 
         membership.LastUpdatedAt = DateTimeOffset.UtcNow;
         await _store.UpdateMembershipAsync(membership, cancellationToken);
+        if (activeMemberMetric is not null)
+        {
+            await _limitEvaluator.ApplyAsync(
+                workspaceId,
+                activeMemberMetric,
+                projectedActiveMembershipCount,
+                DateTimeOffset.UtcNow,
+                "MembershipChange",
+                membership.Id.ToString(),
+                cancellationToken);
+        }
 
         await _auditService.RecordAsync(new AuditRecord
         {

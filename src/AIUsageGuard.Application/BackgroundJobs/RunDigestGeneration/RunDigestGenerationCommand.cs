@@ -1,0 +1,3 @@
+namespace AIUsageGuard.Application.BackgroundJobs.RunDigestGeneration;
+
+public sealed record RunDigestGenerationCommand(DateTimeOffset ScheduledForUtc);

@@ -1,0 +1,507 @@
+openapi: 3.1.0
+info:
+  title: AI Usage Guard Notifications API
+  version: 0.1.0
+  description: >
+    Phase 5 HTTP contract for workspace-scoped notification preferences and
+    notification history review.
+servers:
+  - url: https://api.example.com
+paths:
+  /workspaces/{workspaceId}/notification-preferences:
+    get:
+      summary: Retrieve workspace notification preferences
+      operationId: getWorkspaceNotificationPreferences
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      responses:
+        '200':
+          description: Workspace notification preference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceResponse'
+              examples:
+                currentPreferences:
+                  value:
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    urgentAlertsEnabled: true
+                    digestEnabled: true
+                    digestCadence: daily
+                    recipientSelectionMode: selected_recipients
+                    selectedRecipientUserIds:
+                      - 55555555-5555-5555-5555-555555555555
+                    createdAt: '2026-04-22T08:00:00Z'
+                    lastUpdatedAt: '2026-04-22T08:15:00Z'
+                    lastUpdatedByUserId: 55555555-5555-5555-5555-555555555555
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      summary: Replace workspace notification preferences
+      operationId: updateWorkspaceNotificationPreferences
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferenceRequest'
+      responses:
+        '200':
+          description: Updated workspace notification preference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/notifications:
+    get:
+      summary: Retrieve workspace notification history
+      operationId: listWorkspaceNotifications
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/NotificationType'
+        - $ref: '#/components/parameters/NotificationStatus'
+        - $ref: '#/components/parameters/FromCreatedAt'
+        - $ref: '#/components/parameters/ToCreatedAt'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged notification history for the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+              examples:
+                notificationHistory:
+                  value:
+                    items:
+                      - id: 11111111-1111-1111-1111-111111111111
+                        workspaceId: 22222222-2222-2222-2222-222222222222
+                        type: urgent_alert
+                        channel: email
+                        severity: high
+                        status: delivered
+                        subject: High-risk AI activity detected
+                        coveredPeriodStart: null
+                        coveredPeriodEnd: null
+                        createdAt: '2026-04-22T10:05:00Z'
+                        recipientCount: 2
+                        deliveredCount: 2
+                        failedCount: 0
+                    pageNumber: 1
+                    pageSize: 20
+                    totalCount: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /workspaces/{workspaceId}/notifications/{notificationId}:
+    get:
+      summary: Retrieve one workspace notification with delivery outcomes
+      operationId: getWorkspaceNotification
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: Detailed notification history entry for the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDetailResponse'
+              examples:
+                urgentDetail:
+                  value:
+                    id: 11111111-1111-1111-1111-111111111111
+                    workspaceId: 22222222-2222-2222-2222-222222222222
+                    type: urgent_alert
+                    channel: email
+                    severity: high
+                    status: delivered
+                    subject: High-risk AI activity detected
+                    summaryBody: A high-severity workspace finding requires review.
+                    triggerFingerprint: risk-finding:high:44444444-4444-4444-4444-444444444444
+                    coveredPeriodStart: null
+                    coveredPeriodEnd: null
+                    createdAt: '2026-04-22T10:05:00Z'
+                    deliveries:
+                      - recipientUserId: 55555555-5555-5555-5555-555555555555
+                        recipientAddress: owner@example.com
+                        status: delivered
+                        attemptCount: 1
+                        lastAttemptedAt: '2026-04-22T10:05:10Z'
+                        nextAttemptAt: null
+                        finalReason: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationType:
+      name: type
+      in: query
+      schema:
+        $ref: '#/components/schemas/NotificationType'
+    NotificationStatus:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/NotificationStatus'
+    FromCreatedAt:
+      name: fromCreatedAt
+      in: query
+      schema:
+        type: string
+        format: date-time
+    ToCreatedAt:
+      name: toCreatedAt
+      in: query
+      schema:
+        type: string
+        format: date-time
+    PageNumber:
+      name: pageNumber
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Invalid notification preference payload or filter
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidRecipient:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Selected recipients must be active workspace owners or admins.
+            missingDigestCadence:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Digest cadence is required when digest delivery is enabled.
+            invalidNotificationFilter:
+              value:
+                status: 400
+                title: Bad Request
+                detail: Notification type is not supported.
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Caller is not authorized for the requested workspace notification action
+    NotFound:
+      description: Requested notification does not exist in the workspace
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            notificationMissing:
+              value:
+                status: 404
+                title: Not Found
+                detail: Notification not found.
+  schemas:
+    NotificationType:
+      type: string
+      enum:
+        - urgent_alert
+        - digest
+    NotificationStatus:
+      type: string
+      enum:
+        - pending
+        - delivered
+        - partially_delivered
+        - failed
+        - skipped
+    DeliveryStatus:
+      type: string
+      enum:
+        - pending
+        - retry_scheduled
+        - delivered
+        - failed
+        - skipped
+    DigestCadence:
+      type: string
+      enum:
+        - daily
+        - weekly
+    RecipientSelectionMode:
+      type: string
+      enum:
+        - all_admins_and_owners
+        - selected_recipients
+    UpdateNotificationPreferenceRequest:
+      type: object
+      required:
+        - urgentAlertsEnabled
+        - digestEnabled
+        - recipientSelectionMode
+      properties:
+        urgentAlertsEnabled:
+          type: boolean
+        digestEnabled:
+          type: boolean
+        digestCadence:
+          $ref: '#/components/schemas/DigestCadence'
+          nullable: true
+        recipientSelectionMode:
+          $ref: '#/components/schemas/RecipientSelectionMode'
+        selectedRecipientUserIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+    NotificationPreferenceResponse:
+      type: object
+      required:
+        - workspaceId
+        - urgentAlertsEnabled
+        - digestEnabled
+        - recipientSelectionMode
+        - selectedRecipientUserIds
+        - createdAt
+        - lastUpdatedAt
+        - lastUpdatedByUserId
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        urgentAlertsEnabled:
+          type: boolean
+        digestEnabled:
+          type: boolean
+        digestCadence:
+          $ref: '#/components/schemas/DigestCadence'
+          nullable: true
+        recipientSelectionMode:
+          $ref: '#/components/schemas/RecipientSelectionMode'
+        selectedRecipientUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        lastUpdatedByUserId:
+          type: string
+          format: uuid
+    NotificationListResponse:
+      type: object
+      required:
+        - items
+        - pageNumber
+        - pageSize
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationListItem'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    NotificationListItem:
+      type: object
+      required:
+        - id
+        - workspaceId
+        - type
+        - channel
+        - status
+        - subject
+        - createdAt
+        - recipientCount
+        - deliveredCount
+        - failedCount
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        channel:
+          type: string
+          enum:
+            - email
+        severity:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+          nullable: true
+        status:
+          $ref: '#/components/schemas/NotificationStatus'
+        subject:
+          type: string
+        coveredPeriodStart:
+          type: string
+          format: date-time
+          nullable: true
+        coveredPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        recipientCount:
+          type: integer
+        deliveredCount:
+          type: integer
+        failedCount:
+          type: integer
+    NotificationDetailResponse:
+      type: object
+      required:
+        - id
+        - workspaceId
+        - type
+        - channel
+        - status
+        - subject
+        - summaryBody
+        - triggerFingerprint
+        - createdAt
+        - deliveries
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        channel:
+          type: string
+          enum:
+            - email
+        severity:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+          nullable: true
+        status:
+          $ref: '#/components/schemas/NotificationStatus'
+        subject:
+          type: string
+        summaryBody:
+          type: string
+        triggerFingerprint:
+          type: string
+        coveredPeriodStart:
+          type: string
+          format: date-time
+          nullable: true
+        coveredPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliveryOutcome'
+    DeliveryOutcome:
+      type: object
+      required:
+        - recipientUserId
+        - recipientAddress
+        - status
+        - attemptCount
+      properties:
+        recipientUserId:
+          type: string
+          format: uuid
+        recipientAddress:
+          type: string
+          format: email
+        status:
+          $ref: '#/components/schemas/DeliveryStatus'
+        attemptCount:
+          type: integer
+        lastAttemptedAt:
+          type: string
+          format: date-time
+          nullable: true
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        finalReason:
+          type: string
+          nullable: true
+    ProblemDetails:
+      type: object
+      required:
+        - status
+        - title
+      properties:
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true

@@ -1,5 +1,6 @@
 using AIUsageGuard.Application.Abstractions;
 using AIUsageGuard.Application.Auditing;
+using AIUsageGuard.Application.Billing.ApplyWorkspacePlanAssignment;
 using AIUsageGuard.Application.Errors;
 using AIUsageGuard.Application.Security;
 using AIUsageGuard.Application.Models;
@@ -10,11 +11,16 @@ public sealed class CreateWorkspaceService
 {
     private readonly IPlatformStore _store;
     private readonly IAuditService _auditService;
+    private readonly ApplyWorkspacePlanAssignmentService _planAssignmentService;
 
-    public CreateWorkspaceService(IPlatformStore store, IAuditService auditService)
+    public CreateWorkspaceService(
+        IPlatformStore store,
+        IAuditService auditService,
+        ApplyWorkspacePlanAssignmentService planAssignmentService)
     {
         _store = store;
         _auditService = auditService;
+        _planAssignmentService = planAssignmentService;
     }
 
     public async Task<RegisterWorkspaceResult> RegisterAsync(
@@ -64,6 +70,7 @@ public sealed class CreateWorkspaceService
         await _store.AddUserAsync(user, cancellationToken);
         await _store.AddWorkspaceAsync(workspace, cancellationToken);
         await _store.AddMembershipAsync(membership, cancellationToken);
+        await _planAssignmentService.EnsureCurrentCycleAsync(workspace.Id, user.Id, DateTimeOffset.UtcNow, cancellationToken);
 
         await _auditService.RecordAsync(new AuditRecord
         {

@@ -27,8 +27,27 @@ public sealed class AuditRecordConfiguration : IEntityTypeConfiguration<AuditRec
             .HasMaxLength(512)
             .IsRequired();
 
-        builder.HasIndex(record => record.WorkspaceId);
+        builder.Property(record => record.Category)
+            .HasMaxLength(32)
+            .IsRequired();
+
+        builder.Property(record => record.CorrelationId)
+            .HasMaxLength(128);
+
+        builder.Property(record => record.ClientIpAddressHash)
+            .HasMaxLength(128);
+
+        builder.Property(record => record.UserAgent)
+            .HasMaxLength(512);
+
+        builder.Property(record => record.IsSecurityRelevant)
+            .IsRequired();
+
+        builder.HasIndex(record => new { record.WorkspaceId, record.OccurredAt });
+        builder.HasIndex(record => new { record.WorkspaceId, record.ActionType, record.OccurredAt });
+        builder.HasIndex(record => new { record.WorkspaceId, record.Result, record.OccurredAt });
+        builder.HasIndex(record => new { record.WorkspaceId, record.ActorUserId, record.OccurredAt });
+        builder.HasIndex(record => new { record.WorkspaceId, record.IsSecurityRelevant, record.OccurredAt });
         builder.HasIndex(record => record.ActorUserId);
-        builder.HasIndex(record => record.OccurredAt);
     }
 }

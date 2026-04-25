@@ -6,6 +6,9 @@ packages/
 *.log
 .env*
 TestResults/
+.artifacts/
+*.lscache
+.vs/
 
 .DS_Store
 Thumbs.db

@@ -26,7 +26,11 @@ public sealed class UpdateMembershipLastOwnerTests
     private static UpdateMembershipService CreateService(IPlatformStore store)
     {
         IAuditService auditService = new AuditService(store);
-        return new UpdateMembershipService(store, auditService);
+        return new UpdateMembershipService(
+            store,
+            auditService,
+            BillingTestFactory.CreatePlanAssignmentService(store),
+            BillingTestFactory.CreateLimitEvaluator(store));
     }
 
     private static ApplicationDbContext CreateStoreWithSingleOwner(out Workspace workspace, out WorkspaceMembership ownerMembership)

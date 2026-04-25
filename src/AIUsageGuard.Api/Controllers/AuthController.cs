@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AIUsageGuard.Api.Contracts.Auth;
 using AIUsageGuard.Application.Auditing;
+using AIUsageGuard.Application.Errors;
 using AIUsageGuard.Application.Identity;
 using AIUsageGuard.Application.Models;
 using AIUsageGuard.Application.Workspaces.CreateWorkspace;
@@ -48,7 +49,26 @@ public sealed class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<WorkspaceSessionResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await _signInGuardService.ValidateAsync(request.Email, request.Password, cancellationToken);
+        LoginResult result;
+        try
+        {
+            result = await _signInGuardService.ValidateAsync(request.Email, request.Password, cancellationToken);
+        }
+        catch (SignInHardeningException exception)
+        {
+            await _auditService.RecordAsync(new AuditRecord
+            {
+                WorkspaceId = exception.WorkspaceId,
+                ActorUserId = exception.UserId,
+                ActionType = "auth.login",
+                TargetType = "session",
+                TargetId = exception.UserId.ToString(),
+                Result = "failed",
+                Reason = exception.Message
+            }, cancellationToken);
+            throw;
+        }
+
         await SignInAsync(result.User.Id, result.User.DisplayName, result.User.Email, result.Workspace.Id, result.Membership.Role, cancellationToken);
         await _auditService.RecordAsync(new AuditRecord
         {
