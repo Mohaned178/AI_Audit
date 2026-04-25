@@ -123,6 +123,12 @@ Useful URLs:
 - Swagger: `http://localhost:5172/swagger`
 - Health: `http://localhost:5172/health`
 
+## Live Demo
+
+Live Docker demo:
+
+- Swagger: `https://aiaudit-3brr8z3j.b4a.run/swagger/index.html`
+
 Stop the stack:
 
 ```bash
