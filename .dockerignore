@@ -11,6 +11,7 @@
 **/*.log
 docs/
 plan/
+publish/
 specs/
 tests/
 .agents/
